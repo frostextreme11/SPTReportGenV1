@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-slate-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-500;
+}
+
+/* Base styles */
+body {
+  @apply bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-300;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Focus styles */
+input:focus,
+textarea:focus,
+select:focus {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-800;
+}
+
+/* PDF Print Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .pdf-page {
+    page-break-after: always;
+    background: white !important;
+    padding: 20mm;
+  }
+  
+  .pdf-page:last-child {
+    page-break-after: auto;
+  }
+}
+
+/* PDF-specific styles for html2pdf */
+.pdf-container {
+  font-family: 'Times New Roman', serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: #000;
+  background: #fff;
+}
+
+.pdf-container table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.pdf-container th,
+.pdf-container td {
+  border: 1px solid #000;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.pdf-container th {
+  background-color: #f3f4f6;
+  font-weight: bold;
+}
+
+.pdf-container .text-right {
+  text-align: right;
+}
+
+.pdf-container .signature-block {
+  margin-top: 40px;
+  text-align: right;
+}
+
+/* Number input hide arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Custom animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
