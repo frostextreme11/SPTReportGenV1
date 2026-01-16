@@ -545,7 +545,7 @@ export default function PDFPreview({ isOpen, onClose }) {
                                         ? 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg shadow-green-500/30'
                                         : 'bg-gradient-to-r from-primary-500 via-primary-600 to-emerald-500 hover:from-primary-600 hover:via-primary-700 hover:to-emerald-600 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40'
                                 }
-                                text-white mb-3
+                                text-white
                             `}
                         >
                             {!isGenerating && downloadSuccess !== 'all' && (
@@ -574,44 +574,6 @@ export default function PDFPreview({ isOpen, onClose }) {
                                 </>
                             )}
                         </motion.button>
-
-                        {/* Individual Download Buttons */}
-                        <div className="grid grid-cols-3 gap-2">
-                            {[
-                                { id: 'neraca', label: 'Neraca', icon: '📊' },
-                                { id: 'labarugi', label: 'Laba Rugi', icon: '📈' },
-                                { id: 'peredaran', label: 'Peredaran', icon: '📋' },
-                            ].map((doc) => (
-                                <motion.button
-                                    key={doc.id}
-                                    onClick={() => handleDownloadSingle(doc.id)}
-                                    disabled={isGenerating}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    className={`
-                                        py-2 px-3 rounded-lg font-medium text-sm
-                                        flex items-center justify-center gap-2
-                                        transition-all duration-200
-                                        ${isGenerating && generatingDoc === doc.id
-                                            ? 'bg-slate-300 dark:bg-slate-600 cursor-wait'
-                                            : downloadSuccess === doc.id
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
-                                        }
-                                    `}
-                                >
-                                    {isGenerating && generatingDoc === doc.id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : downloadSuccess === doc.id ? (
-                                        <span>✓</span>
-                                    ) : (
-                                        <span>{doc.icon}</span>
-                                    )}
-                                    <span>{doc.label}</span>
-                                    <Download className="w-3 h-3" />
-                                </motion.button>
-                            ))}
-                        </div>
                     </div>
 
                     {/* Page Tabs */}

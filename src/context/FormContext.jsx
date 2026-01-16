@@ -57,6 +57,15 @@ const getDefaultFormData = () => ({
     // Equity (Modal)
     modalSaham: 0,
     labaDitahan: 0,
+
+    // Step 5: Fixed Assets (Harta/Penyusutan) - Lampiran 1A
+    assets: [],
+
+    // Step 6: Tax Credits (Bukti Potong PPh 22/23) - Lampiran III
+    taxCredits: [],
+
+    // Step 7: Tax Payments (SSP)
+    taxPayments: [],
 });
 
 const STORAGE_KEY = 'siaplapor1771_formdata';

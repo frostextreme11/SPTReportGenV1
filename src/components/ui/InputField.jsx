@@ -29,7 +29,7 @@ export default function InputField({
         placeholder,
         maxLength,
         className: `
-      w-full px-4 py-3 
+      w-full min-h-[48px] px-4 py-3 
       bg-white dark:bg-slate-800 
       border rounded-xl
       transition-all duration-200

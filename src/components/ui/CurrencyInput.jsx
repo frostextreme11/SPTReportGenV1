@@ -81,7 +81,7 @@ export default function CurrencyInput({
                     disabled={disabled}
                     placeholder="0"
                     className={`
-            w-full pl-12 pr-4 py-3 
+            w-full min-h-[48px] pl-12 pr-4 py-3 
             text-right text-base font-medium
             bg-white dark:bg-slate-800 
             border rounded-xl

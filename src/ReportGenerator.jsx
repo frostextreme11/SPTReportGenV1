@@ -11,15 +11,23 @@ import Step1Identity from './components/steps/Step1Identity';
 import Step2Revenue from './components/steps/Step2Revenue';
 import Step3ProfitLoss from './components/steps/Step3ProfitLoss';
 import Step4Balance from './components/steps/Step4Balance';
+import Step5Assets from './components/steps/Step5Assets';
+import Step6TaxCredits from './components/steps/Step6TaxCredits';
+import Step7DownloadCenter from './components/steps/Step7DownloadCenter';
 import PDFPreview from './components/pdf/PDFPreview';
 
 import { useFormData } from './context/FormContext';
+
+const TOTAL_STEPS = 7;
 
 const steps = [
     { id: 1, component: Step1Identity },
     { id: 2, component: Step2Revenue },
     { id: 3, component: Step3ProfitLoss },
     { id: 4, component: Step4Balance },
+    { id: 5, component: Step5Assets },
+    { id: 6, component: Step6TaxCredits },
+    { id: 7, component: Step7DownloadCenter },
 ];
 
 export default function ReportGenerator() {
@@ -31,7 +39,7 @@ export default function ReportGenerator() {
     const CurrentStepComponent = steps.find(s => s.id === currentStep)?.component;
 
     const goToNextStep = () => {
-        if (currentStep < 4) {
+        if (currentStep < TOTAL_STEPS) {
             setDirection(1);
             setCurrentStep(prev => prev + 1);
         }
@@ -144,7 +152,7 @@ export default function ReportGenerator() {
                                 </Button>
                             )}
 
-                            {currentStep < 4 ? (
+                            {currentStep < TOTAL_STEPS ? (
                                 <Button
                                     variant="primary"
                                     onClick={goToNextStep}
