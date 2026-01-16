@@ -1,25 +1,56 @@
 <!doctype html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="SiapLapor 1771 - Generator Laporan Keuangan untuk SPT Tahunan Badan 1771" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <title>SiapLapor 1771 - Generator Laporan Keuangan SPT</title>
-    <script>
-      // Dark mode initialization to prevent FOUC
-      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO Meta Tags -->
+  <title>SPT Instan - Generator Laporan Keuangan SPT 1771 untuk UMKM Indonesia</title>
+  <meta name="description"
+    content="Buat laporan keuangan SPT Badan 1771 hanya dalam 10 menit. Hemat biaya konsultan, langsung jadi PDF & CSV siap upload ke DJP Online. Mulai dari Rp 99.000!" />
+  <meta name="keywords"
+    content="SPT 1771, laporan keuangan, SPT Tahunan Badan, UMKM, pajak Indonesia, DJP Online, e-Form SPT, generator laporan keuangan" />
+  <meta name="author" content="SPT Instan" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://sptinstan.com/" />
+  <meta property="og:title" content="SPT Instan - Laporan SPT 1771 dalam 10 Menit" />
+  <meta property="og:description"
+    content="Buat laporan keuangan SPT Badan 1771 hanya dalam 10 menit. PDF + CSV siap upload ke DJP Online. Mulai dari Rp 99.000!" />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://sptinstan.com/" />
+  <meta property="twitter:title" content="SPT Instan - Laporan SPT 1771 dalam 10 Menit" />
+  <meta property="twitter:description"
+    content="Buat laporan keuangan SPT Badan 1771 hanya dalam 10 menit. PDF + CSV siap upload ke DJP Online." />
+  <meta property="twitter:image" content="/og-image.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#10b981" />
+
+  <script>
+    // Dark mode initialization to prevent FOUC
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>
