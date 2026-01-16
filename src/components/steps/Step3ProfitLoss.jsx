@@ -19,12 +19,16 @@ export default function Step3ProfitLoss() {
     const labaKotor = getLabaKotor();
     const labaBersih = getLabaBersih();
 
-    // Auto-fill pendapatan from Step 2 total if empty
+    // Auto-sync pendapatan with total peredaran from Step 2
+    // This runs whenever the component mounts or totalPeredaran changes
     useEffect(() => {
-        if (!formData.pendapatan && totalPeredaran > 0) {
+        // Always sync pendapatan with totalPeredaran when totalPeredaran changes
+        // This ensures that when user goes back to Step 2, changes values, and returns,
+        // the pendapatan field is updated accordingly
+        if (totalPeredaran > 0) {
             updateField('pendapatan', totalPeredaran);
         }
-    }, []);
+    }, [totalPeredaran]);
 
     return (
         <div className="space-y-6">
@@ -127,8 +131,8 @@ export default function Step3ProfitLoss() {
                                 initial={{ scale: 1.1 }}
                                 animate={{ scale: 1 }}
                                 className={`text-2xl font-bold mt-1 ${labaKotor >= 0
-                                        ? 'text-green-600 dark:text-green-400'
-                                        : 'text-red-600 dark:text-red-400'
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
                                     }`}
                             >
                                 {formatRupiah(labaKotor)}

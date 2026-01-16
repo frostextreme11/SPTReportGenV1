@@ -358,21 +358,116 @@ export default function PDFPreview({ isOpen, onClose }) {
         }
     };
 
-    // Download all documents as separate files
+    // Download all documents as a single combined PDF
     const handleDownloadAll = async () => {
         setIsGenerating(true);
         setGeneratingDoc('all');
         setDownloadSuccess(null);
 
         try {
-            // Generate all 3 PDFs separately
-            await generateSinglePDF('neraca', 'Neraca', getNeracaHTML());
-            await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between downloads
+            const { jsPDF } = await import('jspdf');
+            const html2canvas = (await import('html2canvas')).default;
 
-            await generateSinglePDF('labarugi', 'Laba_Rugi', getLabaRugiHTML());
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Create a new PDF document
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
 
-            await generateSinglePDF('peredaran', 'Peredaran_Usaha', getPeredaranHTML());
+            const pageWidth = 210; // A4 width in mm
+            const pageHeight = 297; // A4 height in mm
+            const margin = 15;
+            const contentWidth = pageWidth - (margin * 2);
+
+            // Helper function to render HTML to canvas and add to PDF
+            const addPageToPDF = async (htmlContent, isFirstPage = false) => {
+                // Create wrapper to clip content from view
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'fixed';
+                wrapper.style.left = '0';
+                wrapper.style.top = '0';
+                wrapper.style.width = '1px';
+                wrapper.style.height = '1px';
+                wrapper.style.overflow = 'hidden';
+                wrapper.style.zIndex = '9999';
+                wrapper.style.pointerEvents = 'none';
+
+                // Create the PDF container
+                const pdfContainer = document.createElement('div');
+                pdfContainer.style.position = 'absolute';
+                pdfContainer.style.left = '0';
+                pdfContainer.style.top = '0';
+                pdfContainer.style.width = '794px'; // A4 width at 96dpi
+                pdfContainer.style.minHeight = '1123px'; // A4 height at 96dpi
+                pdfContainer.style.padding = '40px';
+                pdfContainer.style.background = 'white';
+                pdfContainer.style.color = 'black';
+                pdfContainer.style.fontFamily = "'Times New Roman', serif";
+                pdfContainer.style.fontSize = '12pt';
+                pdfContainer.style.lineHeight = '1.4';
+                pdfContainer.style.boxSizing = 'border-box';
+                pdfContainer.innerHTML = htmlContent;
+
+                wrapper.appendChild(pdfContainer);
+                document.body.appendChild(wrapper);
+
+                // Wait for DOM render
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // Render to canvas
+                const canvas = await html2canvas(pdfContainer, {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+
+                // Calculate dimensions to fit content on one page
+                const imgWidth = contentWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                // If not the first page, add a new page
+                if (!isFirstPage) {
+                    pdf.addPage();
+                }
+
+                // Add the image to PDF
+                const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+                // If content is taller than page, scale it down to fit
+                let finalImgHeight = imgHeight;
+                let finalImgWidth = imgWidth;
+                const maxContentHeight = pageHeight - (margin * 2);
+
+                if (imgHeight > maxContentHeight) {
+                    const scaleFactor = maxContentHeight / imgHeight;
+                    finalImgHeight = maxContentHeight;
+                    finalImgWidth = imgWidth * scaleFactor;
+                }
+
+                // Center horizontally if scaled down
+                const xOffset = margin + (contentWidth - finalImgWidth) / 2;
+
+                pdf.addImage(imgData, 'JPEG', xOffset, margin, finalImgWidth, finalImgHeight);
+
+                // Cleanup
+                document.body.removeChild(wrapper);
+            };
+
+            // Add Neraca page
+            await addPageToPDF(getNeracaHTML(), true);
+
+            // Add Laba Rugi page
+            await addPageToPDF(getLabaRugiHTML(), false);
+
+            // Add Peredaran Usaha page
+            await addPageToPDF(getPeredaranHTML(), false);
+
+            // Save the combined PDF
+            const filename = `Laporan_Keuangan_${formData.namaPerusahaan?.replace(/\s+/g, '_') || 'Perusahaan'}_${formData.tahunPajak}.pdf`;
+            pdf.save(filename);
 
             setDownloadSuccess('all');
             setTimeout(() => setDownloadSuccess(null), 3000);
@@ -465,17 +560,17 @@ export default function PDFPreview({ isOpen, onClose }) {
                             {isGenerating && generatingDoc === 'all' ? (
                                 <>
                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                    <span>Membuat 3 PDF...</span>
+                                    <span>Membuat PDF Laporan Keuangan...</span>
                                 </>
                             ) : downloadSuccess === 'all' ? (
                                 <>
                                     <Sparkles className="w-5 h-5" />
-                                    <span>3 File Berhasil Diunduh! ✓</span>
+                                    <span>Laporan Berhasil Diunduh! ✓</span>
                                 </>
                             ) : (
                                 <>
                                     <FileDown className="w-5 h-5" />
-                                    <span>Download Semua (3 File Terpisah)</span>
+                                    <span>Download Laporan Keuangan (1 PDF - 3 Halaman)</span>
                                 </>
                             )}
                         </motion.button>
@@ -570,8 +665,8 @@ export default function PDFPreview({ isOpen, onClose }) {
                                     key={index}
                                     onClick={() => setCurrentPage(index)}
                                     className={`w-3 h-3 rounded-full transition-all ${currentPage === index
-                                            ? 'bg-primary-500 scale-125'
-                                            : 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400'
+                                        ? 'bg-primary-500 scale-125'
+                                        : 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400'
                                         }`}
                                 />
                             ))}
