@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Eye, RotateCcw, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -13,12 +13,13 @@ import Step3ProfitLoss from './components/steps/Step3ProfitLoss';
 import Step4Balance from './components/steps/Step4Balance';
 import Step5Assets from './components/steps/Step5Assets';
 import Step6TaxCredits from './components/steps/Step6TaxCredits';
-import Step7DownloadCenter from './components/steps/Step7DownloadCenter';
+import Step7SSP from './components/steps/Step6SSP';
+import Step8DownloadCenter from './components/steps/Step7DownloadCenter';
 import PDFPreview from './components/pdf/PDFPreview';
 
 import { useFormData } from './context/FormContext';
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const steps = [
     { id: 1, component: Step1Identity },
@@ -27,7 +28,8 @@ const steps = [
     { id: 4, component: Step4Balance },
     { id: 5, component: Step5Assets },
     { id: 6, component: Step6TaxCredits },
-    { id: 7, component: Step7DownloadCenter },
+    { id: 7, component: Step7SSP },
+    { id: 8, component: Step8DownloadCenter },
 ];
 
 export default function ReportGenerator() {
@@ -35,6 +37,18 @@ export default function ReportGenerator() {
     const [direction, setDirection] = useState(1);
     const [showPreview, setShowPreview] = useState(false);
     const { resetForm } = useFormData();
+
+    // Listen for PDF preview event from Download Center
+    useEffect(() => {
+        const handleOpenPDFPreview = () => {
+            setShowPreview(true);
+        };
+
+        window.addEventListener('openPDFPreview', handleOpenPDFPreview);
+        return () => {
+            window.removeEventListener('openPDFPreview', handleOpenPDFPreview);
+        };
+    }, []);
 
     const CurrentStepComponent = steps.find(s => s.id === currentStep)?.component;
 

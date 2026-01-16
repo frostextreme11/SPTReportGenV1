@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, CheckCircle, Loader2, Package, Receipt, CreditCard, FileSpreadsheet, AlertCircle, Sparkles } from 'lucide-react';
+import { Download, CheckCircle, Loader2, Package, Receipt, CreditCard, FileSpreadsheet, AlertCircle, Sparkles, FileText, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFormData } from '../../context/FormContext';
 import { formatRupiah } from '../../utils/currency';
@@ -20,9 +20,10 @@ const STATUS = {
 };
 
 export default function Step7DownloadCenter() {
-    const { formData, getTotalPeredaran, getTotalPphFinal } = useFormData();
+    const { formData, getTotalPeredaran, getTotalPphFinal, getLabaBersih, getTotalAktiva } = useFormData();
     const [downloadStatus, setDownloadStatus] = useState({});
     const [loadingProgress, setLoadingProgress] = useState({});
+    const [showPDFPreview, setShowPDFPreview] = useState(false);
 
     const assets = formData.assets || [];
     const taxCredits = formData.taxCredits || [];
@@ -94,6 +95,12 @@ export default function Step7DownloadCenter() {
         });
     };
 
+    // Financial Report Download (triggers PDF modal)
+    const handleDownloadFinancialReport = () => {
+        // This will trigger the PDF Preview modal in the parent
+        window.dispatchEvent(new CustomEvent('openPDFPreview'));
+    };
+
     // Calculate total depreciation
     const getTotalPenyusutan = () => {
         return assets.reduce((sum, asset) => sum + (asset.penyusutanTahunIni || 0), 0);
@@ -104,8 +111,30 @@ export default function Step7DownloadCenter() {
         return taxCredits.reduce((sum, credit) => sum + (credit.jumlahDipotong || 0), 0);
     };
 
-    // Download cards configuration
+    // Calculate total SSP payments
+    const getTotalSSP = () => {
+        return taxPayments.reduce((sum, p) => sum + (p.jumlahPembayaran || 0), 0);
+    };
+
+    // Download cards configuration - Financial Report first, then CSVs
     const downloadCards = [
+        {
+            key: 'financialReport',
+            title: 'Laporan Keuangan',
+            subtitle: 'Neraca, Laba Rugi, Peredaran Usaha',
+            icon: FileText,
+            color: 'from-emerald-500 to-green-600',
+            shadowColor: 'shadow-emerald-500/30',
+            count: 3,
+            countLabel: 'Laporan',
+            total: getLabaBersih(),
+            totalLabel: 'Laba Bersih',
+            isEmpty: false, // Always available
+            emptyMessage: '',
+            onDownload: handleDownloadFinancialReport,
+            filename: `Laporan_Keuangan_${formData.tahunPajak}.pdf`,
+            isPDF: true,
+        },
         {
             key: 'assets',
             title: 'Daftar Aset & Penyusutan',
@@ -118,7 +147,7 @@ export default function Step7DownloadCenter() {
             total: getTotalPenyusutan(),
             totalLabel: 'Total Penyusutan',
             isEmpty: assets.length === 0,
-            emptyMessage: 'Belum ada data aset. Silakan isi di langkah sebelumnya.',
+            emptyMessage: 'Belum ada data aset. Silakan isi di langkah Aset.',
             onDownload: handleDownloadAssets,
             filename: `1771-ASET_${formData.npwp?.replace(/\D/g, '') || 'NPWP'}.csv`,
         },
@@ -134,7 +163,7 @@ export default function Step7DownloadCenter() {
             total: getTotalTaxCredit(),
             totalLabel: 'Total Kredit Pajak',
             isEmpty: taxCredits.length === 0,
-            emptyMessage: 'Belum ada bukti potong. Silakan isi di langkah sebelumnya.',
+            emptyMessage: 'Belum ada bukti potong. Silakan isi di langkah Kredit Pajak.',
             onDownload: handleDownloadTaxCredits,
             filename: `1771-KREDIT_${formData.npwp?.replace(/\D/g, '') || 'NPWP'}.csv`,
         },
@@ -147,12 +176,12 @@ export default function Step7DownloadCenter() {
             shadowColor: 'shadow-purple-500/20',
             count: taxPayments.length,
             countLabel: 'SSP',
-            total: taxPayments.reduce((sum, p) => sum + (p.jumlahPembayaran || 0), 0),
+            total: getTotalSSP(),
             totalLabel: 'Total Setoran',
             isEmpty: taxPayments.length === 0,
-            emptyMessage: 'Belum ada data SSP.',
+            emptyMessage: 'Belum ada data SSP. Silakan isi di langkah SSP.',
             onDownload: handleDownloadTaxPayments,
-            filename: `1771-SSP_${formData.npwp?.replace(/\D/g, '') || 'NPWP'}.csv`,
+            filename: '1771-PEMBAYARAN SSP.csv',
         },
     ];
 
@@ -173,7 +202,7 @@ export default function Step7DownloadCenter() {
                         Download Center
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 mt-2">
-                        Unduh file CSV untuk DJP e-Form
+                        Unduh file untuk DJP e-Form SPT 1771
                     </p>
                 </div>
             </FadeIn>
@@ -190,7 +219,7 @@ export default function Step7DownloadCenter() {
                             <p className="text-sm text-slate-400">NPWP: {formData.npwp || '-'}</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+                    <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-700">
                         <div>
                             <p className="text-xs text-slate-400">Tahun Pajak</p>
                             <p className="font-bold text-lg">{formData.tahunPajak}</p>
@@ -198,6 +227,10 @@ export default function Step7DownloadCenter() {
                         <div>
                             <p className="text-xs text-slate-400">Total Peredaran</p>
                             <p className="font-bold text-lg text-emerald-400">{formatRupiah(getTotalPeredaran())}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-400">PPh Final</p>
+                            <p className="font-bold text-lg text-amber-400">{formatRupiah(getTotalPphFinal())}</p>
                         </div>
                     </div>
                 </div>
@@ -209,17 +242,26 @@ export default function Step7DownloadCenter() {
                     const status = downloadStatus[card.key] || STATUS.READY;
                     const progress = loadingProgress[card.key] || 0;
                     const Icon = card.icon;
+                    const isFirst = index === 0;
 
                     return (
                         <StaggerItem key={card.key}>
                             <motion.div
                                 layout
                                 className={`
-                                    bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 
-                                    overflow-hidden transition-all
+                                    bg-white dark:bg-slate-800 rounded-xl border overflow-hidden transition-all
                                     ${status === STATUS.SUCCESS ? 'ring-2 ring-emerald-500' : ''}
+                                    ${isFirst ? 'border-emerald-300 dark:border-emerald-700' : 'border-slate-200 dark:border-slate-700'}
                                 `}
                             >
+                                {/* Featured badge for Financial Report */}
+                                {isFirst && (
+                                    <div className="bg-gradient-to-r from-emerald-500 to-green-500 px-3 py-1.5 flex items-center justify-center gap-2">
+                                        <Sparkles className="w-4 h-4 text-white" />
+                                        <span className="text-xs font-medium text-white">Laporan Utama</span>
+                                    </div>
+                                )}
+
                                 {/* Header with gradient */}
                                 <div className={`bg-gradient-to-r ${card.color} p-4 text-white`}>
                                     <div className="flex items-center justify-between">
@@ -244,7 +286,9 @@ export default function Step7DownloadCenter() {
                                     {/* Stats */}
                                     <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
                                         <span className="text-sm text-slate-500 dark:text-slate-400">{card.totalLabel}</span>
-                                        <span className="font-bold text-slate-800 dark:text-white">{formatRupiah(card.total)}</span>
+                                        <span className={`font-bold ${card.total >= 0 ? 'text-slate-800 dark:text-white' : 'text-red-500'}`}>
+                                            {formatRupiah(card.total)}
+                                        </span>
                                     </div>
 
                                     {/* Filename Preview */}
@@ -267,7 +311,7 @@ export default function Step7DownloadCenter() {
                                                 <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400 mb-2">
                                                     <span className="flex items-center gap-2">
                                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                                        Formatting for DJP...
+                                                        {card.isPDF ? 'Generating PDF...' : 'Formatting for DJP...'}
                                                     </span>
                                                     <span>{progress}%</span>
                                                 </div>
@@ -320,7 +364,7 @@ export default function Step7DownloadCenter() {
                                                     className="flex items-center gap-2"
                                                 >
                                                     <CheckCircle className="w-5 h-5" />
-                                                    <span>Berhasil Diunduh!</span>
+                                                    <span>Berhasil!</span>
                                                 </motion.div>
                                             ) : status === STATUS.LOADING ? (
                                                 <motion.div
@@ -341,8 +385,17 @@ export default function Step7DownloadCenter() {
                                                     exit={{ opacity: 0 }}
                                                     className="flex items-center gap-2"
                                                 >
-                                                    <Download className="w-5 h-5" />
-                                                    <span>Download CSV</span>
+                                                    {card.isPDF ? (
+                                                        <>
+                                                            <Eye className="w-5 h-5" />
+                                                            <span>Lihat & Download PDF</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Download className="w-5 h-5" />
+                                                            <span>Download CSV</span>
+                                                        </>
+                                                    )}
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>

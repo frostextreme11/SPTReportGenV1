@@ -187,9 +187,9 @@ export function generateTaxCreditCSV(credits, npwp) {
 }
 
 /**
- * Generate Tax Payment CSV (SSP)
+ * Generate Tax Payment CSV (SSP) - Strict DJP Schema
  * @param {Array} payments - Array of payment objects
- * @param {string} npwp - Company NPWP for filename
+ * @param {string} npwp - Company NPWP (not used in filename for this type)
  * @returns {{ content: string, filename: string }}
  */
 export function generateTaxPaymentCSV(payments, npwp) {
@@ -204,17 +204,19 @@ export function generateTaxPaymentCSV(payments, npwp) {
     ];
 
     const rows = payments.map((payment, index) => [
-        String(index + 1),
-        payment.kap || '',
-        payment.kjs || '',
-        payment.caraPelunasan || 'SSP',
-        payment.nomorBuktiSetor || '',
-        formatMoneyDJP(payment.jumlahPembayaran),
-        formatDateDJP(payment.tanggalSetor)
+        String(index + 1), // No: Auto-increment sequence
+        payment.kap || '411126', // KAP: The selected code
+        payment.kjs || '200', // KJS: The selected code
+        payment.caraPelunasan || '1', // Cara Pelunasan: Default 1 (Via Bank/Persepsi)
+        payment.ntpn || '', // Nomor Bukti Setor/Pbk: The NTPN string
+        formatMoneyDJP(payment.jumlahPembayaran), // Jumlah Pembayaran: Integer string
+        formatDateDJP(payment.tanggalSetor) // Tanggal Setor: dd/mm/yyyy
     ]);
 
     const content = generateCSV(headers, rows);
-    const filename = `1771-SSP_${cleanNPWP(npwp)}.csv`;
+    // Exact filename as required: 1771-PEMBAYARAN SSP.csv
+    const filename = '1771-PEMBAYARAN SSP.csv';
 
     return { content, filename };
 }
+

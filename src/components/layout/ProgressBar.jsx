@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const steps = [
     { id: 1, label: 'Identitas', shortLabel: 'ID' },
@@ -10,7 +10,8 @@ const steps = [
     { id: 4, label: 'Neraca', shortLabel: 'NC' },
     { id: 5, label: 'Aset', shortLabel: 'AS' },
     { id: 6, label: 'Kredit Pajak', shortLabel: 'KP' },
-    { id: 7, label: 'Download', shortLabel: 'DL' },
+    { id: 7, label: 'SSP', shortLabel: 'SP' },
+    { id: 8, label: 'Download', shortLabel: 'DL' },
 ];
 
 export default function ProgressBar({ currentStep }) {
