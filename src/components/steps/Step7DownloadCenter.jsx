@@ -165,7 +165,7 @@ export default function Step7DownloadCenter() {
             isEmpty: taxCredits.length === 0,
             emptyMessage: 'Belum ada bukti potong. Silakan isi di langkah Kredit Pajak.',
             onDownload: handleDownloadTaxCredits,
-            filename: `1771-KREDIT_${formData.npwp?.replace(/\D/g, '') || 'NPWP'}.csv`,
+            filename: `LAMPIRAN-III-1771-KREDIT_${formData.npwp?.replace(/\D/g, '') || 'NPWP'}.csv`,
         },
         {
             key: 'taxPayments',

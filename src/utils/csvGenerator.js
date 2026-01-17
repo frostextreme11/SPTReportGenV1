@@ -146,7 +146,7 @@ export function generateDepreciationCSV(assets, npwp) {
 }
 
 /**
- * Generate Domestic Tax Credit CSV (Lampiran III 2022 - PPh 23)
+ * Generate Domestic Tax Credit CSV (Lampiran III - PPh 22/23/26)
  * @param {Array} credits - Array of tax credit objects
  * @param {string} npwp - Company NPWP for filename
  * @returns {{ content: string, filename: string }}
@@ -167,21 +167,21 @@ export function generateTaxCreditCSV(credits, npwp) {
     ];
 
     const rows = credits.map((credit, index) => [
-        String(index + 1), // Nomor
-        credit.namaPemotong || '',
-        cleanNPWP(credit.npwpPemotong),
-        credit.pasal || '23', // Default to PPh 23
-        credit.jenis || 'Jasa',
-        formatMoneyDJP(credit.nilaiObjek),
-        formatMoneyDJP(credit.jumlahDipotong),
-        credit.nomorBukti || '',
-        formatDateDJP(credit.tanggal),
-        credit.alamat || '',
-        credit.ntpn || ''
+        String(index + 1), // Nomor: Auto-increment
+        credit.namaPemotong || '', // Nama Pemotong
+        cleanNPWP(credit.npwpPemotong).slice(0, 15), // NPWP Pemotong: Max 15 digits
+        credit.pasal || '23', // Pasal: 22, 23, or 26
+        credit.kodeJenis || '24', // Jenis: Kode Jenis Penghasilan (1-25)
+        formatMoneyDJP(credit.nilaiObjek), // Nilai Obj Pemotongan
+        formatMoneyDJP(credit.jumlahDipotong), // PPh Potput
+        credit.nomorBukti || '', // Nomor Bukti
+        formatDateDJP(credit.tanggal), // Tanggal: dd/mm/yyyy
+        credit.alamatPemotong || '', // Alamat Pemotong/Pemungut
+        credit.ntpn || '' // NTPN: 16 digit
     ]);
 
     const content = generateCSV(headers, rows);
-    const filename = `1771-KREDIT_${cleanNPWP(npwp)}.csv`;
+    const filename = `LAMPIRAN-III-1771-KREDIT_${cleanNPWP(npwp)}.csv`;
 
     return { content, filename };
 }
