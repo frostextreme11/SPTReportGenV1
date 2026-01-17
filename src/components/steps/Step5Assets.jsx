@@ -6,29 +6,53 @@ import { useFormData } from '../../context/FormContext';
 import { formatRupiah } from '../../utils/currency';
 import { FadeIn, StaggerContainer, StaggerItem } from '../ui/AnimatedStep';
 
-// Asset group options for depreciation
-const KELOMPOK_HARTA = [
-    { value: '1', label: 'Kelompok 1 (4 tahun)', rate: 25 },
-    { value: '2', label: 'Kelompok 2 (8 tahun)', rate: 12.5 },
-    { value: '3', label: 'Kelompok 3 (16 tahun)', rate: 6.25 },
-    { value: '4', label: 'Kelompok 4 (20 tahun)', rate: 5 },
-    { value: 'bangunan_permanen', label: 'Bangunan Permanen (20 tahun)', rate: 5 },
-    { value: 'bangunan_tidak_permanen', label: 'Bangunan Tidak Permanen (10 tahun)', rate: 10 },
+// Jenis Harta (1-2)
+const JENIS_HARTA = [
+    { value: '1', label: '1 - Harta Berwujud' },
+    { value: '2', label: '2 - Kelompok Bangunan' },
 ];
 
+// Kelompok Harta (1-6)
+const KELOMPOK_HARTA = [
+    { value: '1', label: '1 - Kelompok 1 (4 thn)', rate: 25 },
+    { value: '2', label: '2 - Kelompok 2 (8 thn)', rate: 12.5 },
+    { value: '3', label: '3 - Kelompok 3 (16 thn)', rate: 6.25 },
+    { value: '4', label: '4 - Kelompok 4 (20 thn)', rate: 5 },
+    { value: '5', label: '5 - Permanen (20 thn)', rate: 5 },
+    { value: '6', label: '6 - Tidak Permanen (10 thn)', rate: 10 },
+];
+
+// Jenis Penyusutan Komersial (1-7)
+const JENIS_PENYUSUTAN_KOMERSIAL = [
+    { value: '1', label: '1 - GL (Garis Lurus)' },
+    { value: '2', label: '2 - JAT (Jumlah Angka Tahun)' },
+    { value: '3', label: '3 - SM (Saldo Menurun)' },
+    { value: '4', label: '4 - SMG (Saldo Menurun Ganda)' },
+    { value: '5', label: '5 - JJJ (Jumlah Jam Jasa)' },
+    { value: '6', label: '6 - JSP (Jumlah Satuan Produksi)' },
+    { value: '7', label: '7 - ML (Metode Lainnya)' },
+];
+
+// Jenis Penyusutan Fiskal (1-2)
+const JENIS_PENYUSUTAN_FISKAL = [
+    { value: '1', label: '1 - GL (Garis Lurus)' },
+    { value: '2', label: '2 - SM (Saldo Menurun)' },
+];
+
+// Bulan Perolehan (1-12)
 const BULAN_OPTIONS = [
-    { value: '01', label: 'Januari' },
-    { value: '02', label: 'Februari' },
-    { value: '03', label: 'Maret' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'Mei' },
-    { value: '06', label: 'Juni' },
-    { value: '07', label: 'Juli' },
-    { value: '08', label: 'Agustus' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'Oktober' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'Desember' },
+    { value: '1', label: '1 - Januari' },
+    { value: '2', label: '2 - Februari' },
+    { value: '3', label: '3 - Maret' },
+    { value: '4', label: '4 - April' },
+    { value: '5', label: '5 - Mei' },
+    { value: '6', label: '6 - Juni' },
+    { value: '7', label: '7 - Juli' },
+    { value: '8', label: '8 - Agustus' },
+    { value: '9', label: '9 - September' },
+    { value: '10', label: '10 - Oktober' },
+    { value: '11', label: '11 - November' },
+    { value: '12', label: '12 - Desember' },
 ];
 
 export default function Step5Assets() {
@@ -38,10 +62,14 @@ export default function Step5Assets() {
     const addAsset = () => {
         const newAsset = {
             id: Date.now(),
+            jenisHarta: '1', // Kode Jenis Harta (1-6)
+            kelompokHarta: '1', // Kode Kelompok Harta (1-5)
+            jenisUsaha: '111', // Jenis Usaha (user can edit)
             namaHarta: '',
-            kelompokHarta: '1',
-            bulanPerolehan: '01',
+            bulanPerolehan: '1', // 1-12
             tahunPerolehan: formData.tahunPajak,
+            jenisPenyusutanKomersial: '1', // 1-7
+            jenisPenyusutanFiskal: '1', // 1-2
             hargaPerolehan: 0,
             nilaiSisaBuku: 0,
             penyusutanTahunIni: 0,
@@ -55,10 +83,17 @@ export default function Step5Assets() {
             if (asset.id === id) {
                 const updated = { ...asset, [field]: value };
 
-                // Auto-calculate depreciation when harga perolehan or kelompok changes
+                // Auto-update jenisUsaha when jenisHarta or kelompokHarta changes
+                if (field === 'jenisHarta' || field === 'kelompokHarta') {
+                    const jh = field === 'jenisHarta' ? value : updated.jenisHarta;
+                    const kh = field === 'kelompokHarta' ? value : updated.kelompokHarta;
+                    updated.jenisUsaha = `${jh}${kh}1`;
+                }
+
+                // Auto-calculate depreciation when hargaPerolehan or kelompokHarta changes
                 if (field === 'hargaPerolehan' || field === 'kelompokHarta') {
                     const kelompok = KELOMPOK_HARTA.find(k => k.value === (field === 'kelompokHarta' ? value : updated.kelompokHarta));
-                    if (kelompok) {
+                    if (kelompok && kelompok.rate) {
                         const harga = field === 'hargaPerolehan' ? value : updated.hargaPerolehan;
                         updated.penyusutanTahunIni = Math.round(harga * (kelompok.rate / 100));
                     }
@@ -112,9 +147,10 @@ export default function Step5Assets() {
                     <div className="text-sm text-blue-700 dark:text-blue-300">
                         <p className="font-medium mb-1">Petunjuk Pengisian:</p>
                         <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
-                            <li>Masukkan semua aset tetap yang dimiliki perusahaan</li>
-                            <li>Penyusutan akan dihitung otomatis berdasarkan kelompok harta</li>
-                            <li>Format sesuai dengan DJP e-Form Lampiran 1A</li>
+                            <li>Jenis Usaha = gabungan kode (cth: 111, 211, 311)</li>
+                            <li>Bulan Perolehan diisi angka 1-12</li>
+                            <li>Nilai tanpa titik atau koma (cth: 250000)</li>
+                            <li>Penyusutan dihitung otomatis berdasarkan Jenis Harta</li>
                         </ul>
                     </div>
                 </div>
@@ -153,9 +189,11 @@ export default function Step5Assets() {
                                         <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                                             <Building2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                                         </div>
-                                        <span className="font-medium text-slate-800 dark:text-white">
-                                            Aset #{index + 1}
-                                        </span>
+                                        <div>
+                                            <span className="font-medium text-slate-800 dark:text-white">
+                                                Aset #{index + 1}
+                                            </span>
+                                        </div>
                                     </div>
                                     <motion.button
                                         whileHover={{ scale: 1.1 }}
@@ -167,24 +205,25 @@ export default function Step5Assets() {
                                     </motion.button>
                                 </div>
 
-                                {/* Form Grid - Card View on Mobile */}
+                                {/* Form Grid */}
                                 <div className="space-y-4">
-                                    {/* Nama Harta */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                            Nama Harta
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={asset.namaHarta}
-                                            onChange={(e) => updateAsset(asset.id, 'namaHarta', e.target.value)}
-                                            placeholder="Contoh: Mobil Toyota Avanza"
-                                            className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                                        />
-                                    </div>
-
-                                    {/* Row: Kelompok & Bulan Perolehan */}
+                                    {/* Row: Jenis Harta & Kelompok Harta */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Jenis Harta
+                                            </label>
+                                            <select
+                                                value={asset.jenisHarta}
+                                                onChange={(e) => updateAsset(asset.id, 'jenisHarta', e.target.value)}
+                                                className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                            >
+                                                {JENIS_HARTA.map(j => (
+                                                    <option key={j.value} value={j.value}>{j.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                                 Kelompok Harta
@@ -199,10 +238,48 @@ export default function Step5Assets() {
                                                 ))}
                                             </select>
                                         </div>
+                                    </div>
 
+                                    {/* Jenis Usaha */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                            Jenis Usaha (Kode)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={asset.jenisUsaha}
+                                            onChange={(e) => {
+                                                const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                                                updateAsset(asset.id, 'jenisUsaha', value);
+                                            }}
+                                            placeholder="Contoh: 111, 211, 311"
+                                            maxLength={3}
+                                            className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                        />
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            Gabungan kode Jenis Harta + kode lainnya
+                                        </p>
+                                    </div>
+
+                                    {/* Nama Harta */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                            Nama Harta
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={asset.namaHarta}
+                                            onChange={(e) => updateAsset(asset.id, 'namaHarta', e.target.value)}
+                                            placeholder="Contoh: Mobil, Motor, Traktor"
+                                            className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+
+                                    {/* Row: Bulan & Tahun Perolehan */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                Bulan Perolehan
+                                                Bln Perolehan (1-12)
                                             </label>
                                             <select
                                                 value={asset.bulanPerolehan}
@@ -214,35 +291,77 @@ export default function Step5Assets() {
                                                 ))}
                                             </select>
                                         </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                <Calendar className="w-4 h-4 inline mr-1" />
+                                                Thn Perolehan
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={asset.tahunPerolehan}
+                                                onChange={(e) => {
+                                                    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                                    updateAsset(asset.id, 'tahunPerolehan', value);
+                                                }}
+                                                placeholder="2024"
+                                                maxLength={4}
+                                                className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                            />
+                                        </div>
                                     </div>
 
-                                    {/* Row: Tahun Perolehan */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                            <Calendar className="w-4 h-4 inline mr-1" />
-                                            Tahun Perolehan (YYYY)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={asset.tahunPerolehan}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                                                updateAsset(asset.id, 'tahunPerolehan', value);
-                                            }}
-                                            placeholder="2024"
-                                            maxLength={4}
-                                            className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                                        />
+                                    {/* Row: Jenis Penyusutan Komersial & Fiskal */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Jenis Penyusutan Komersial
+                                            </label>
+                                            <select
+                                                value={asset.jenisPenyusutanKomersial}
+                                                onChange={(e) => updateAsset(asset.id, 'jenisPenyusutanKomersial', e.target.value)}
+                                                className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                            >
+                                                {JENIS_PENYUSUTAN_KOMERSIAL.map(m => (
+                                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Jenis Penyusutan Fiskal
+                                            </label>
+                                            <select
+                                                value={asset.jenisPenyusutanFiskal}
+                                                onChange={(e) => updateAsset(asset.id, 'jenisPenyusutanFiskal', e.target.value)}
+                                                className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                            >
+                                                {JENIS_PENYUSUTAN_FISKAL.map(m => (
+                                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
 
                                     {/* Harga Perolehan */}
                                     <CurrencyInput
-                                        label="Harga Perolehan (IDR)"
+                                        label="Harga Perolehan"
                                         id={`harga-${asset.id}`}
                                         value={asset.hargaPerolehan}
                                         onChange={(value) => updateAsset(asset.id, 'hargaPerolehan', value)}
                                         helpTitle="Harga Perolehan"
-                                        helpContent="Nilai perolehan aset termasuk biaya-biaya yang dikeluarkan untuk mendapatkan aset tersebut."
+                                        helpContent="Nilai perolehan aset termasuk biaya-biaya yang dikeluarkan."
+                                    />
+
+                                    {/* Nilai Sisa Buku */}
+                                    <CurrencyInput
+                                        label="Nilai Sisa Buku"
+                                        id={`sisa-buku-${asset.id}`}
+                                        value={asset.nilaiSisaBuku}
+                                        onChange={(value) => updateAsset(asset.id, 'nilaiSisaBuku', value)}
+                                        helpTitle="Nilai Sisa Buku"
+                                        helpContent="Nilai buku aset setelah dikurangi akumulasi penyusutan."
                                     />
 
                                     {/* Auto-calculated Depreciation */}
@@ -250,7 +369,7 @@ export default function Step5Assets() {
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                                 <DollarSign className="w-4 h-4 inline mr-1" />
-                                                Penyusutan Tahun Ini
+                                                Penyusutan Fiskal Tahun Ini
                                             </span>
                                             <motion.span
                                                 key={asset.penyusutanTahunIni}
@@ -262,20 +381,20 @@ export default function Step5Assets() {
                                             </motion.span>
                                         </div>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                            *Dihitung otomatis berdasarkan kelompok harta
+                                            *Dihitung otomatis berdasarkan Harga Perolehan × Rate Jenis Harta
                                         </p>
                                     </div>
 
                                     {/* Keterangan */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                            Keterangan (Opsional)
+                                            Keterangan Nama Harta
                                         </label>
                                         <input
                                             type="text"
                                             value={asset.keterangan}
                                             onChange={(e) => updateAsset(asset.id, 'keterangan', e.target.value)}
-                                            placeholder="Keterangan tambahan..."
+                                            placeholder="Contoh: Honda, Avanza, Merk ABC"
                                             className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                         />
                                     </div>

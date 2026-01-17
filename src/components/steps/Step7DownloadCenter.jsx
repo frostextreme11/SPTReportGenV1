@@ -149,7 +149,7 @@ export default function Step7DownloadCenter() {
             isEmpty: assets.length === 0,
             emptyMessage: 'Belum ada data aset. Silakan isi di langkah Aset.',
             onDownload: handleDownloadAssets,
-            filename: `1771-ASET_${formData.npwp?.replace(/\D/g, '') || 'NPWP'}.csv`,
+            filename: `LAMPIRAN-1A-1771-ASET_${formData.npwp?.replace(/\D/g, '') || 'NPWP'}.csv`,
         },
         {
             key: 'taxCredits',

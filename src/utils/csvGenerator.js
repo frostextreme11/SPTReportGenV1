@@ -103,7 +103,7 @@ export function downloadCSV(content, filename) {
 // ============================================
 
 /**
- * Generate Depreciation CSV (Lampiran 1A)
+ * Generate Depreciation CSV (Lampiran 1A) - Strict DJP Schema
  * @param {Array} assets - Array of asset objects
  * @param {string} npwp - Company NPWP for filename
  * @returns {{ content: string, filename: string }}
@@ -125,22 +125,22 @@ export function generateDepreciationCSV(assets, npwp) {
     ];
 
     const rows = assets.map(asset => [
-        asset.jenisHarta || 'Kelompok 1', // Default to Kelompok 1
-        asset.kelompokHarta || '1',
-        asset.jenisUsaha || '',
-        asset.namaHarta || '',
-        asset.bulanPerolehan || '01',
-        asset.tahunPerolehan || '',
-        asset.penyusutanKomersial || 'Garis Lurus',
-        asset.penyusutanFiskal || 'Garis Lurus',
-        formatMoneyDJP(asset.hargaPerolehan),
-        formatMoneyDJP(asset.nilaiSisaBuku || 0),
-        formatMoneyDJP(asset.penyusutanTahunIni || 0),
-        asset.keterangan || ''
+        asset.jenisHarta || '1', // Jenis Harta: 1-6
+        asset.kelompokHarta || '1', // Kelompok Harta: 1-5
+        asset.jenisUsaha || `${asset.jenisHarta || '1'}11`, // Jenis Usaha: user input or auto
+        asset.namaHarta || '', // Nama Harta
+        asset.bulanPerolehan || '1', // Bulan Perolehan: 1-12
+        asset.tahunPerolehan || '', // Tahun Perolehan: YYYY
+        asset.jenisPenyusutanKomersial || '1', // Jenis Penyusutan Komersial: 1-7
+        asset.jenisPenyusutanFiskal || '1', // Jenis Penyusutan Fiskal: 1-2
+        formatMoneyDJP(asset.hargaPerolehan || 0), // Harga Perolehan
+        formatMoneyDJP(asset.nilaiSisaBuku || 0), // Nilai Sisa Buku
+        formatMoneyDJP(asset.penyusutanTahunIni || 0), // Penyusutan fiskal tahun ini
+        asset.keterangan || '' // Keterangan nama harta
     ]);
 
     const content = generateCSV(headers, rows);
-    const filename = `1771-ASET_${cleanNPWP(npwp)}.csv`;
+    const filename = `LAMPIRAN-1A-1771-ASET_${cleanNPWP(npwp)}.csv`;
 
     return { content, filename };
 }
@@ -185,9 +185,8 @@ export function generateTaxCreditCSV(credits, npwp) {
 
     return { content, filename };
 }
-
 /**
- * Generate Tax Payment CSV (SSP) - Strict DJP Schema
+ * Generate Tax Payment CSV (SSP) - Strict DJP Schema for SPT 1771
  * @param {Array} payments - Array of payment objects
  * @param {string} npwp - Company NPWP (not used in filename for this type)
  * @returns {{ content: string, filename: string }}
@@ -195,22 +194,20 @@ export function generateTaxCreditCSV(credits, npwp) {
 export function generateTaxPaymentCSV(payments, npwp) {
     const headers = [
         'No',
-        'KAP',
-        'KJS',
-        'Cara Pelunasan',
-        'Nomor Bukti Setor/Pbk',
-        'Jumlah Pembayaran',
-        'Tanggal Setor'
+        'KD-MAP',
+        'KD JNS STR',
+        'TGL SSP',
+        'Jumlah Bayar',
+        'NTPN atau Nomor PBK'
     ];
 
     const rows = payments.map((payment, index) => [
         String(index + 1), // No: Auto-increment sequence
-        payment.kap || '411126', // KAP: The selected code
-        payment.kjs || '200', // KJS: The selected code
-        payment.caraPelunasan || '1', // Cara Pelunasan: Default 1 (Via Bank/Persepsi)
-        payment.ntpn || '', // Nomor Bukti Setor/Pbk: The NTPN string
-        formatMoneyDJP(payment.jumlahPembayaran), // Jumlah Pembayaran: Integer string
-        formatDateDJP(payment.tanggalSetor) // Tanggal Setor: dd/mm/yyyy
+        '411126', // KD-MAP: Fixed to 411126 for SPT 1771
+        '200', // KD JNS STR: Fixed to 200 for SPT 1771
+        formatDateDJP(payment.tanggalSetor), // TGL SSP: dd/mm/yyyy
+        formatMoneyDJP(payment.jumlahPembayaran), // Jumlah Bayar: Integer string
+        payment.ntpn || '' // NTPN atau Nomor PBK: 16 digits
     ]);
 
     const content = generateCSV(headers, rows);
