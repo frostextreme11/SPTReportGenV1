@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Download, CheckCircle, Loader2, Package, Receipt, CreditCard, FileSpreadsheet, AlertCircle, Sparkles, FileText, Eye } from 'lucide-react';
+import { Download, CheckCircle, Loader2, Package, Receipt, CreditCard, FileSpreadsheet, AlertCircle, Sparkles, FileText, Eye, Lock, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFormData } from '../../context/FormContext';
+import { useAuth } from '../../context/AuthContext';
 import { formatRupiah } from '../../utils/currency';
 import { FadeIn, StaggerContainer, StaggerItem } from '../ui/AnimatedStep';
 import {
@@ -10,6 +11,9 @@ import {
     generateTaxCreditCSV,
     generateTaxPaymentCSV,
 } from '../../utils/csvGenerator';
+import AuthModal from '../auth/AuthModal';
+import UnlockDownloadModal from '../payment/UnlockDownloadModal';
+import PaymentModal from '../payment/PaymentModal';
 
 // Download card status enum
 const STATUS = {
@@ -20,17 +24,66 @@ const STATUS = {
 };
 
 export default function Step7DownloadCenter() {
-    const { formData, getTotalPeredaran, getTotalPphFinal, getLabaBersih, getTotalAktiva } = useFormData();
+    const {
+        formData,
+        getTotalPeredaran,
+        getTotalPphFinal,
+        getLabaBersih,
+        getTotalAktiva,
+        currentReportId,
+        isDownloadUnlocked,
+        setDownloadUnlocked,
+        saveToSupabase
+    } = useFormData();
+    const { user, profile, refreshProfile } = useAuth();
+
     const [downloadStatus, setDownloadStatus] = useState({});
     const [loadingProgress, setLoadingProgress] = useState({});
-    const [showPDFPreview, setShowPDFPreview] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [pendingDownload, setPendingDownload] = useState(null);
 
     const assets = formData.assets || [];
     const taxCredits = formData.taxCredits || [];
     const taxPayments = formData.taxPayments || [];
 
-    // Simulate DJP formatting delay with progress
-    const simulateDownload = async (key, downloadFn) => {
+    // Check if user can download
+    const canDownload = () => {
+        return user && isDownloadUnlocked;
+    };
+
+    // Handle download gate
+    const handleDownloadGate = async (downloadKey, downloadFn) => {
+        // 1. Check if user is logged in
+        if (!user) {
+            setPendingDownload({ key: downloadKey, fn: downloadFn });
+            setShowAuthModal(true);
+            return;
+        }
+
+        // 2. Save report to Supabase if not already saved
+        if (!currentReportId) {
+            const result = await saveToSupabase(user.id);
+            if (!result.success) {
+                alert('Gagal menyimpan laporan. Silakan coba lagi.');
+                return;
+            }
+        }
+
+        // 3. Check if download is unlocked
+        if (!isDownloadUnlocked) {
+            setPendingDownload({ key: downloadKey, fn: downloadFn });
+            setShowUnlockModal(true);
+            return;
+        }
+
+        // 4. Proceed with download
+        executeDownload(downloadKey, downloadFn);
+    };
+
+    // Execute the actual download
+    const executeDownload = async (key, downloadFn) => {
         setDownloadStatus(prev => ({ ...prev, [key]: STATUS.LOADING }));
         setLoadingProgress(prev => ({ ...prev, [key]: 0 }));
 
@@ -73,23 +126,41 @@ export default function Step7DownloadCenter() {
         }
     };
 
+    // After unlock, execute pending download
+    const handleUnlockSuccess = async () => {
+        await setDownloadUnlocked();
+        if (pendingDownload) {
+            executeDownload(pendingDownload.key, pendingDownload.fn);
+            setPendingDownload(null);
+        }
+    };
+
+    // After auth, check and proceed
+    const handleAuthSuccess = async () => {
+        setShowAuthModal(false);
+        if (pendingDownload) {
+            // Re-trigger the gate check
+            handleDownloadGate(pendingDownload.key, pendingDownload.fn);
+        }
+    };
+
     // Download handlers
     const handleDownloadAssets = () => {
-        simulateDownload('assets', () => {
+        handleDownloadGate('assets', () => {
             const { content, filename } = generateDepreciationCSV(assets, formData.npwp);
             downloadCSV(content, filename);
         });
     };
 
     const handleDownloadTaxCredits = () => {
-        simulateDownload('taxCredits', () => {
+        handleDownloadGate('taxCredits', () => {
             const { content, filename } = generateTaxCreditCSV(taxCredits, formData.npwp);
             downloadCSV(content, filename);
         });
     };
 
     const handleDownloadTaxPayments = () => {
-        simulateDownload('taxPayments', () => {
+        handleDownloadGate('taxPayments', () => {
             const { content, filename } = generateTaxPaymentCSV(taxPayments, formData.npwp);
             downloadCSV(content, filename);
         });
@@ -97,8 +168,9 @@ export default function Step7DownloadCenter() {
 
     // Financial Report Download (triggers PDF modal)
     const handleDownloadFinancialReport = () => {
-        // This will trigger the PDF Preview modal in the parent
-        window.dispatchEvent(new CustomEvent('openPDFPreview'));
+        handleDownloadGate('financialReport', () => {
+            window.dispatchEvent(new CustomEvent('openPDFPreview'));
+        });
     };
 
     // Calculate total depreciation
@@ -207,6 +279,53 @@ export default function Step7DownloadCenter() {
                 </div>
             </FadeIn>
 
+            {/* Download Access Status */}
+            <FadeIn delay={0.05}>
+                <div className={`rounded-xl p-4 border ${canDownload()
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                        {canDownload() ? (
+                            <>
+                                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-800 rounded-full flex items-center justify-center">
+                                    <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                                        Download Aktif
+                                    </p>
+                                    <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                                        Anda dapat mendownload semua file untuk laporan ini
+                                    </p>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-800 rounded-full flex items-center justify-center">
+                                    {user ? (
+                                        <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                    ) : (
+                                        <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="font-medium text-amber-700 dark:text-amber-300">
+                                        {user ? 'Download Terkunci' : 'Login Diperlukan'}
+                                    </p>
+                                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                                        {user
+                                            ? 'Gunakan kuota untuk membuka akses download'
+                                            : 'Silakan login untuk mendownload file'
+                                        }
+                                    </p>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </FadeIn>
+
             {/* Company Info Summary */}
             <FadeIn delay={0.1}>
                 <div className="bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-700 dark:to-slate-800 rounded-xl p-5 text-white">
@@ -243,6 +362,7 @@ export default function Step7DownloadCenter() {
                     const progress = loadingProgress[card.key] || 0;
                     const Icon = card.icon;
                     const isFirst = index === 0;
+                    const isLocked = !canDownload();
 
                     return (
                         <StaggerItem key={card.key}>
@@ -385,15 +505,16 @@ export default function Step7DownloadCenter() {
                                                     exit={{ opacity: 0 }}
                                                     className="flex items-center gap-2"
                                                 >
+                                                    {isLocked && <Lock className="w-4 h-4" />}
                                                     {card.isPDF ? (
                                                         <>
                                                             <Eye className="w-5 h-5" />
-                                                            <span>Lihat & Download PDF</span>
+                                                            <span>{isLocked ? 'Buka Akses & Lihat PDF' : 'Lihat & Download PDF'}</span>
                                                         </>
                                                     ) : (
                                                         <>
                                                             <Download className="w-5 h-5" />
-                                                            <span>Download CSV</span>
+                                                            <span>{isLocked ? 'Buka Akses & Download' : 'Download CSV'}</span>
                                                         </>
                                                     )}
                                                 </motion.div>
@@ -415,6 +536,40 @@ export default function Step7DownloadCenter() {
                     </p>
                 </div>
             </FadeIn>
+
+            {/* Auth Modal */}
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => {
+                    setShowAuthModal(false);
+                    setPendingDownload(null);
+                }}
+            />
+
+            {/* Unlock Download Modal */}
+            <UnlockDownloadModal
+                isOpen={showUnlockModal}
+                onClose={() => {
+                    setShowUnlockModal(false);
+                    setPendingDownload(null);
+                }}
+                reportId={currentReportId}
+                onUnlocked={handleUnlockSuccess}
+                onBuyQuota={() => {
+                    setShowUnlockModal(false);
+                    setShowPaymentModal(true);
+                }}
+            />
+
+            {/* Payment Modal */}
+            <PaymentModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onSuccess={() => {
+                    refreshProfile();
+                    setShowPaymentModal(false);
+                }}
+            />
         </div>
     );
 }

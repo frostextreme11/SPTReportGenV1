@@ -1,6 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 const FormContext = createContext();
+
+const STORAGE_KEY = 'siaplapor1771_formdata';
+const REPORT_ID_KEY = 'siaplapor1771_currentReportId';
 
 // Default form data structure
 const getDefaultFormData = () => ({
@@ -68,8 +72,6 @@ const getDefaultFormData = () => ({
     taxPayments: [],
 });
 
-const STORAGE_KEY = 'siaplapor1771_formdata';
-
 export function FormProvider({ children }) {
     const [formData, setFormData] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -85,10 +87,50 @@ export function FormProvider({ children }) {
         return getDefaultFormData();
     });
 
+    // Current report ID being edited (from Supabase)
+    const [currentReportId, setCurrentReportId] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem(REPORT_ID_KEY) || null;
+        }
+        return null;
+    });
+
+    // Track if download is unlocked for current report
+    const [isDownloadUnlocked, setIsDownloadUnlocked] = useState(false);
+
     // Save to localStorage whenever formData changes
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
     }, [formData]);
+
+    // Save report ID to localStorage
+    useEffect(() => {
+        if (currentReportId) {
+            localStorage.setItem(REPORT_ID_KEY, currentReportId);
+        } else {
+            localStorage.removeItem(REPORT_ID_KEY);
+        }
+    }, [currentReportId]);
+
+    // Fetch download status when report ID changes
+    useEffect(() => {
+        const fetchDownloadStatus = async () => {
+            if (currentReportId) {
+                const { data } = await supabase
+                    .from('tax_reports')
+                    .select('is_download_unlocked')
+                    .eq('id', currentReportId)
+                    .single();
+
+                if (data) {
+                    setIsDownloadUnlocked(data.is_download_unlocked);
+                }
+            } else {
+                setIsDownloadUnlocked(false);
+            }
+        };
+        fetchDownloadStatus();
+    }, [currentReportId]);
 
     // Update a single field
     const updateField = (field, value) => {
@@ -108,6 +150,62 @@ export function FormProvider({ children }) {
 
             return { ...prev, peredaran: newPeredaran };
         });
+    };
+
+    // Save current form data to Supabase
+    const saveToSupabase = async (userId) => {
+        if (!userId || !formData.namaPerusahaan || !formData.npwp) {
+            return { success: false, message: 'Data tidak lengkap' };
+        }
+
+        try {
+            if (currentReportId) {
+                // Update existing report
+                const { error } = await supabase
+                    .from('tax_reports')
+                    .update({
+                        nama_wajib_pajak: formData.namaPerusahaan,
+                        npwp: formData.npwp,
+                        tahun_pajak: formData.tahunPajak,
+                        form_data: formData,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', currentReportId);
+
+                if (error) throw error;
+                return { success: true, reportId: currentReportId };
+            } else {
+                // Insert new report
+                const { data, error } = await supabase
+                    .from('tax_reports')
+                    .insert({
+                        user_id: userId,
+                        nama_wajib_pajak: formData.namaPerusahaan,
+                        npwp: formData.npwp,
+                        tahun_pajak: formData.tahunPajak,
+                        form_data: formData,
+                        is_download_unlocked: false
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                setCurrentReportId(data.id);
+                return { success: true, reportId: data.id };
+            }
+        } catch (error) {
+            console.error('Error saving to Supabase:', error);
+            return { success: false, message: error.message };
+        }
+    };
+
+    // Load form data from a Supabase report
+    const loadFromSupabase = (report) => {
+        if (report?.form_data) {
+            setFormData({ ...getDefaultFormData(), ...report.form_data });
+            setCurrentReportId(report.id);
+            setIsDownloadUnlocked(report.is_download_unlocked);
+        }
     };
 
     // Calculate total peredaran usaha
@@ -165,7 +263,24 @@ export function FormProvider({ children }) {
     // Reset form to defaults
     const resetForm = () => {
         setFormData(getDefaultFormData());
+        setCurrentReportId(null);
+        setIsDownloadUnlocked(false);
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(REPORT_ID_KEY);
+    };
+
+    // Mark download as unlocked for current report
+    const setDownloadUnlocked = async () => {
+        if (currentReportId) {
+            const { error } = await supabase
+                .from('tax_reports')
+                .update({ is_download_unlocked: true })
+                .eq('id', currentReportId);
+
+            if (!error) {
+                setIsDownloadUnlocked(true);
+            }
+        }
     };
 
     const value = {
@@ -184,6 +299,13 @@ export function FormProvider({ children }) {
         getTotalModal,
         isBalanced,
         resetForm,
+        // New Supabase-related functions
+        currentReportId,
+        setCurrentReportId,
+        isDownloadUnlocked,
+        setDownloadUnlocked,
+        saveToSupabase,
+        loadFromSupabase,
     };
 
     return (
