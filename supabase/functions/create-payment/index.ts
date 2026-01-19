@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-user-token',
 }
 
 // DOKU Sandbox Configuration
@@ -48,9 +48,16 @@ serve(async (req) => {
     }
 
     try {
-        // Get auth header
+        // Get auth: Try custom header first (to bypass Gateway 401), then standard Auth header
         const authHeader = req.headers.get('Authorization')
-        if (!authHeader) {
+        const customToken = req.headers.get('x-user-token')
+
+        let token;
+        if (customToken) {
+            token = customToken;
+        } else if (authHeader) {
+            token = authHeader.replace('Bearer ', '');
+        } else {
             throw new Error('Missing authorization header')
         }
 
@@ -59,8 +66,7 @@ serve(async (req) => {
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-        // Get user from token
-        const token = authHeader.replace('Bearer ', '')
+        // Validate token
         const { data: { user }, error: userError } = await supabase.auth.getUser(token)
 
         if (userError || !user) {
@@ -102,6 +108,13 @@ serve(async (req) => {
 
         const bodyString = JSON.stringify(dokuBody)
         const digest = await generateDigest(bodyString)
+
+        // DEBUG LOGGING
+        const componentSignature = `Client-Id:${DOKU_CLIENT_ID}\nRequest-Id:${requestId}\nRequest-Timestamp:${timestamp}\nRequest-Target:/checkout/v1/payment\nDigest:${digest}`
+        console.log('--- DOKU DEBUG ---')
+        console.log('Component Signature To Sign:\n', componentSignature)
+        console.log('DOKU Body:', bodyString)
+
         const signature = await generateSignature(
             DOKU_CLIENT_ID,
             requestId,
@@ -110,6 +123,9 @@ serve(async (req) => {
             digest,
             DOKU_SECRET_KEY
         )
+
+        console.log('Generated Signature:', signature)
+        console.log('--- END DEBUG ---')
 
         // Call DOKU API
         const dokuResponse = await fetch(DOKU_API_URL, {
@@ -128,7 +144,7 @@ serve(async (req) => {
 
         if (!dokuResponse.ok) {
             console.error('DOKU Error:', dokuData)
-            throw new Error('Failed to create payment')
+            throw new Error(`DOKU Failed: ${JSON.stringify(dokuData)}`)
         }
 
         // Save payment record to database

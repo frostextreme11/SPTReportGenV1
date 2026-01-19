@@ -36,7 +36,7 @@ export default function ReportGenerator() {
     const [currentStep, setCurrentStep] = useState(1);
     const [direction, setDirection] = useState(1);
     const [showPreview, setShowPreview] = useState(false);
-    const { resetForm } = useFormData();
+    const { resetForm, currentReportId } = useFormData();
 
     // Listen for PDF preview event from Download Center
     useEffect(() => {
@@ -49,6 +49,18 @@ export default function ReportGenerator() {
             window.removeEventListener('openPDFPreview', handleOpenPDFPreview);
         };
     }, []);
+
+    // Check if we should reset form on mount (e.g. "Create New Report" clicked)
+    // Check if we should reset form on mount (e.g. "Create New Report" clicked)
+    useEffect(() => {
+        // Fix Race Condition: Check Context State instead of localStorage.
+        // Context State is updated continuously by DashboardPage before navigation.
+        if (!currentReportId) {
+            console.log('[ReportGenerator] No active report ID in context - ensuring form is reset');
+            resetForm();
+            setCurrentStep(1);
+        }
+    }, [currentReportId]);
 
     const CurrentStepComponent = steps.find(s => s.id === currentStep)?.component;
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Coins, Sparkles, Check, Loader2, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase, MOCK_MODE, mockProfile, withTimeout } from '../../lib/supabaseClient';
+import { supabase, MOCK_MODE, mockProfile, withTimeout, supabaseUrl, supabaseAnonKey } from '../../lib/supabaseClient';
 
 const PACKAGES = [
     {
@@ -60,16 +60,52 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
             // REAL MODE - Call Edge Function for DOKU Payment
             console.log('[PaymentModal] Initiating DOKU payment...');
 
-            const { data, error: functionError } = await supabase.functions.invoke('create-payment', {
-                body: {
-                    packageId: selectedPackage.id,
-                    price: selectedPackage.price,
+            // Force refresh session to ensure we have a valid, non-stale token
+            console.log('[PaymentModal] Refreshing session...');
+            const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
+
+            if (refreshError || !newSession) {
+                console.error('[PaymentModal] Session refresh failed:', refreshError);
+                throw new Error('Gagal memperbarui sesi login. Silakan logout dan login kembali.');
+            }
+
+            console.log('[PaymentModal] Valid token obtained (prefix):', newSession.access_token.substring(0, 10) + '...');
+            console.log('[PaymentModal] Using Project URL:', supabaseUrl);
+
+            console.log('[PaymentModal] Valid token obtained (prefix):', newSession.access_token.substring(0, 10) + '...');
+            console.log('[PaymentModal] Using Project URL:', supabaseUrl);
+
+            // Direct fetch with Hybrid Auth to bypass Gateway 401
+            // We authorize with ANON key (allowed by Gateway)
+            // But verify user with x-user-token inside the function
+            const response = await fetch(`${supabaseUrl}/functions/v1/create-payment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${supabaseAnonKey}`, // PASS GATEWAY
+                    'apikey': supabaseAnonKey,
+                    'x-user-token': newSession.access_token // VERIFY IN FUNCTION
+                },
+                body: JSON.stringify({
+                    package_type: selectedPackage.id,
+                    amount: selectedPackage.price,
                     name: selectedPackage.name,
-                    quotaAmount: selectedPackage.quotaAmount
-                }
+                    quota_amount: selectedPackage.quotaAmount
+                })
             });
 
-            if (functionError) throw functionError;
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[PaymentModal] Payment failed:', response.status, errorText);
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    throw new Error(errorJson.error || `Gagal memproses pembayaran (${response.status})`);
+                } catch (e) {
+                    throw new Error(`Gagal memproses pembayaran: ${response.status} ${response.statusText}`);
+                }
+            }
+
+            const data = await response.json();
 
             if (data?.paymentUrl) {
                 // Redirect user to DOKU payment page

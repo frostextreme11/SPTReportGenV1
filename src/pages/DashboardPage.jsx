@@ -10,8 +10,11 @@ import { useAuth } from '../context/AuthContext';
 import { supabase, MOCK_MODE, mockReports, withTimeout } from '../lib/supabaseClient';
 import PaymentModal from '../components/payment/PaymentModal';
 
+import { useFormData } from '../context/FormContext'; // Import hook
+
 export default function DashboardPage() {
     const { user, profile, signOut, refreshProfile } = useAuth();
+    const { setFormData, setCurrentReportId, setIsDownloadUnlocked, resetForm } = useFormData(); // Use hook
     const navigate = useNavigate();
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -27,7 +30,7 @@ export default function DashboardPage() {
             return;
         }
 
-        // MOCK MODE - return immediately with mock data
+        // MOCK MODE
         if (MOCK_MODE) {
             console.log('[Dashboard] MOCK_MODE enabled - skipping Supabase');
             setReports(mockReports);
@@ -35,13 +38,17 @@ export default function DashboardPage() {
             return;
         }
 
-        setLoading(true);
+        // Optimization: If we already have reports, don't show full loading spinner, just background refresh
+        // Fix: Use a ref or simple check. For now, checking length is fine.
+        const isBackgroundRefresh = reports.length > 0;
+        if (!isBackgroundRefresh) {
+            setLoading(true);
+        }
 
         try {
             const { data, error } = await withTimeout(
                 supabase
                     .from('tax_reports')
-                    // Optimize: Select only needed fields, exclude heavy form_data
                     .select('id, nama_wajib_pajak, npwp, tahun_pajak, is_download_unlocked, updated_at')
                     .eq('user_id', user.id)
                     .order('updated_at', { ascending: false }),
@@ -54,11 +61,11 @@ export default function DashboardPage() {
                 console.log('[Dashboard] Loaded', data.length, 'reports');
             } else {
                 console.log('[Dashboard] Error fetching reports:', error);
-                setReports([]);
+                if (!isBackgroundRefresh) setReports([]);
             }
         } catch (err) {
             console.error('[Dashboard] Fetch error:', err.message);
-            setReports([]);
+            if (!isBackgroundRefresh) setReports([]);
         } finally {
             setLoading(false);
         }
@@ -70,17 +77,23 @@ export default function DashboardPage() {
     };
 
     const handleCreateNew = () => {
-        // Clear localStorage and navigate to generator
-        localStorage.removeItem('siaplapor1771_formdata');
-        localStorage.removeItem('siaplapor1771_currentReportId');
+        // Use context to reset form state and properly clear localStorage via effect
+        resetForm();
         navigate('/generator');
     };
 
     const handleOpenReport = async (report) => {
-        // If report already has form_data (e.g. from creation), use it
+        // Use context to set state directly
         if (report.form_data) {
-            localStorage.setItem('siaplapor1771_formdata', JSON.stringify(report.form_data));
-            localStorage.setItem('siaplapor1771_currentReportId', report.id);
+            setFormData(report.form_data);
+            setCurrentReportId(report.id);
+            // Check if this report corresponds to current context's isDownloadUnlocked?
+            // Actually context loads it from DB based on ID. 
+            // But we should set it optimistically if available or let context effect fetch it.
+            // Provide data.is_download_unlocked if available on report object
+            if (report.is_download_unlocked !== undefined) {
+                setIsDownloadUnlocked(report.is_download_unlocked);
+            }
             navigate('/generator');
             return;
         }
@@ -91,8 +104,8 @@ export default function DashboardPage() {
             if (MOCK_MODE) {
                 const fullReport = mockReports.find(r => r.id === report.id);
                 if (fullReport) {
-                    localStorage.setItem('siaplapor1771_formdata', JSON.stringify(fullReport.form_data));
-                    localStorage.setItem('siaplapor1771_currentReportId', fullReport.id);
+                    setFormData(fullReport.form_data);
+                    setCurrentReportId(fullReport.id);
                     navigate('/generator');
                 }
                 return;
@@ -101,7 +114,7 @@ export default function DashboardPage() {
             const { data, error } = await withTimeout(
                 supabase
                     .from('tax_reports')
-                    .select('form_data, id') // Fetch form_data explicitly
+                    .select('form_data, id, is_download_unlocked') // Fetch is_download_unlocked too
                     .eq('id', report.id)
                     .single(),
                 5000,
@@ -111,9 +124,9 @@ export default function DashboardPage() {
             if (error) throw error;
 
             if (data && data.form_data) {
-                // Determine complexity of form_data to ensure deep copy or fresh state if needed
-                localStorage.setItem('siaplapor1771_formdata', JSON.stringify(data.form_data));
-                localStorage.setItem('siaplapor1771_currentReportId', data.id);
+                setFormData(data.form_data);
+                setCurrentReportId(data.id);
+                setIsDownloadUnlocked(data.is_download_unlocked);
                 navigate('/generator');
             } else {
                 alert('Data laporan kosong atau rusak.');

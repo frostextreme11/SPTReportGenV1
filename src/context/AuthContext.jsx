@@ -40,17 +40,20 @@ export function AuthProvider({ children }) {
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            (event, session) => {
                 console.log('[AuthContext] Auth state changed:', event);
                 setSession(session);
                 setUser(session?.user ?? null);
 
                 if (session?.user) {
-                    await fetchProfile(session.user.id);
+                    // Fetch profile in background - don't await/block
+                    fetchProfile(session.user.id);
 
-                    // On sign in, sync localStorage data to Supabase
+                    // On sign in, sync localStorage data to Supabase in background
                     if (event === 'SIGNED_IN') {
-                        await syncLocalDataToSupabase(session.user.id);
+                        syncLocalDataToSupabase(session.user.id).catch(err =>
+                            console.log('[AuthContext] Background sync warning:', err)
+                        );
                     }
                 } else {
                     setProfile(null);
@@ -67,24 +70,33 @@ export function AuthProvider({ children }) {
             return;
         }
 
+        // Optimization: If profile is already loaded for this user, skip fetch
+        if (profile && profile.id === userId) {
+            console.log('[AuthContext] Profile already loaded for', userId);
+            return;
+        }
+
         try {
+            console.log('[AuthContext] Fetching profile for', userId);
             const { data, error } = await withTimeout(
                 supabase
                     .from('profiles')
-                    .select('*')
+                    .select('id, full_name, email, quota_balance')
                     .eq('id', userId)
                     .single(),
-                8000,
-                'Profile fetch timeout'
+                3000, // Reduced to 3s
+                'Profile fetch slow'
             );
 
             if (!error && data) {
                 setProfile(data);
+                console.log('[AuthContext] Profile loaded');
             } else if (error) {
-                console.error('[AuthContext] Profile fetch error:', error);
+                console.log('[AuthContext] Profile fetch warning:', error.message);
             }
         } catch (err) {
-            console.error('[AuthContext] Error fetching profile:', err);
+            console.log('[AuthContext] Profile fetch info:', err.message);
+            // Non-critical, just continue
         }
     };
 
@@ -95,7 +107,24 @@ export function AuthProvider({ children }) {
         }
 
         if (user) {
-            await fetchProfile(user.id);
+            // Force fetch even if loaded
+            setProfile(prev => prev ? { ...prev } : null); // Trigger duplicate check skip? No, we probably want to force it.
+            // Actually, for refreshProfile we DO want to ignoring the cache check.
+            // But since fetchProfile has the check, we need to bypass it or reset.
+            // Let's simpler: just call the internal fetch logic directly or make fetchProfile take a 'force' arg.
+            // For now, let's just clear profile temporarily to force fetch, or duplicate logic.
+            // Cleaner: separate the actual fetch logic.
+
+            try {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                if (data) setProfile(data);
+            } catch (e) {
+                console.error('Refresh profile failed', e);
+            }
         }
     };
 
