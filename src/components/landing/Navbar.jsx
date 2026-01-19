@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, FileText } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import AuthModal from '../auth/AuthModal';
 
 export default function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const { user, signOut } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -24,6 +29,27 @@ export default function Navbar() {
         setIsMobileMenuOpen(false);
     };
 
+    const handleLoginClick = () => {
+        if (user) {
+            // User already logged in, go to dashboard
+            navigate('/dashboard');
+        } else {
+            setShowAuthModal(true);
+        }
+        setIsMobileMenuOpen(false);
+    };
+
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/');
+        setIsMobileMenuOpen(false);
+    };
+
+    const handleStartClick = () => {
+        navigate('/generator');
+        setIsMobileMenuOpen(false);
+    };
+
     return (
         <>
             <motion.nav
@@ -31,8 +57,8 @@ export default function Navbar() {
                 animate={{ y: 0 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
                 className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-                        ? 'bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 shadow-lg shadow-slate-950/50'
-                        : 'bg-transparent'
+                    ? 'bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 shadow-lg shadow-slate-950/50'
+                    : 'bg-transparent'
                     }`}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -62,14 +88,31 @@ export default function Navbar() {
                             >
                                 Harga
                             </button>
-                            <Link
-                                to="/generator"
-                                className="text-slate-300 hover:text-white transition-colors font-medium"
-                            >
-                                Login
-                            </Link>
+                            {user ? (
+                                <>
+                                    <Link
+                                        to="/dashboard"
+                                        className="text-slate-300 hover:text-white transition-colors font-medium"
+                                    >
+                                        Dashboard
+                                    </Link>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="text-slate-300 hover:text-white transition-colors font-medium"
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={handleLoginClick}
+                                    className="text-slate-300 hover:text-white transition-colors font-medium"
+                                >
+                                    Login
+                                </button>
+                            )}
                             <motion.button
-                                onClick={() => scrollToSection('pricing')}
+                                onClick={handleStartClick}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 className="relative px-6 py-2.5 rounded-full font-semibold text-white overflow-hidden group"
@@ -107,15 +150,32 @@ export default function Navbar() {
                             >
                                 Harga
                             </button>
-                            <Link
-                                to="/generator"
-                                className="block text-slate-300 hover:text-white transition-colors font-medium py-2"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                Login
-                            </Link>
+                            {user ? (
+                                <>
+                                    <Link
+                                        to="/dashboard"
+                                        className="block text-slate-300 hover:text-white transition-colors font-medium py-2"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        Dashboard
+                                    </Link>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="block w-full text-left text-slate-300 hover:text-white transition-colors font-medium py-2"
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={handleLoginClick}
+                                    className="block w-full text-left text-slate-300 hover:text-white transition-colors font-medium py-2"
+                                >
+                                    Login
+                                </button>
+                            )}
                             <motion.button
-                                onClick={() => scrollToSection('pricing')}
+                                onClick={handleStartClick}
                                 whileTap={{ scale: 0.95 }}
                                 className="w-full px-6 py-3 rounded-full font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600"
                             >
@@ -125,6 +185,12 @@ export default function Navbar() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Auth Modal */}
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+            />
         </>
     );
 }

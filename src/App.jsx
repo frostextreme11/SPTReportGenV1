@@ -1,14 +1,37 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import DashboardPage from './pages/DashboardPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ReportGenerator from './ReportGenerator';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
+
+// Wrapper for landing page that redirects to dashboard if logged in
+function HomeRoute() {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
+            </div>
+        );
+    }
+
+    // If logged in, redirect to dashboard
+    if (user) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    return <LandingPage />;
+}
 
 export default function App() {
     return (
         <Router>
             <Routes>
-                <Route path="/" element={<LandingPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/" element={<HomeRoute />} />
                 <Route path="/generator" element={<ReportGenerator />} />
                 <Route
                     path="/dashboard"

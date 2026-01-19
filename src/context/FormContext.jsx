@@ -154,47 +154,74 @@ export function FormProvider({ children }) {
 
     // Save current form data to Supabase
     const saveToSupabase = async (userId) => {
-        if (!userId || !formData.namaPerusahaan || !formData.npwp) {
-            return { success: false, message: 'Data tidak lengkap' };
+        console.log('[saveToSupabase] Starting with userId:', userId);
+        console.log('[saveToSupabase] formData.namaPerusahaan:', formData.namaPerusahaan);
+        console.log('[saveToSupabase] formData.npwp:', formData.npwp);
+
+        if (!userId) {
+            console.log('[saveToSupabase] No userId - returning false');
+            return { success: false, message: 'User ID tidak ditemukan' };
         }
+
+        // Allow save even without full data - just use defaults
+        const namaPerusahaan = formData.namaPerusahaan || 'Laporan Tanpa Nama';
+        const npwp = formData.npwp || '00.000.000.0-000.000';
+        const tahunPajak = formData.tahunPajak || new Date().getFullYear().toString();
 
         try {
             if (currentReportId) {
+                console.log('[saveToSupabase] Updating existing report:', currentReportId);
                 // Update existing report
                 const { error } = await supabase
                     .from('tax_reports')
                     .update({
-                        nama_wajib_pajak: formData.namaPerusahaan,
-                        npwp: formData.npwp,
-                        tahun_pajak: formData.tahunPajak,
+                        nama_wajib_pajak: namaPerusahaan,
+                        npwp: npwp,
+                        tahun_pajak: tahunPajak,
                         form_data: formData,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', currentReportId);
 
-                if (error) throw error;
+                if (error) {
+                    console.log('[saveToSupabase] Update error:', error);
+                    throw error;
+                }
+                console.log('[saveToSupabase] Update success');
                 return { success: true, reportId: currentReportId };
             } else {
+                console.log('[saveToSupabase] Inserting new report for userId:', userId);
                 // Insert new report
                 const { data, error } = await supabase
                     .from('tax_reports')
                     .insert({
                         user_id: userId,
-                        nama_wajib_pajak: formData.namaPerusahaan,
-                        npwp: formData.npwp,
-                        tahun_pajak: formData.tahunPajak,
+                        nama_wajib_pajak: namaPerusahaan,
+                        npwp: npwp,
+                        tahun_pajak: tahunPajak,
                         form_data: formData,
                         is_download_unlocked: false
                     })
                     .select()
                     .single();
 
-                if (error) throw error;
-                setCurrentReportId(data.id);
-                return { success: true, reportId: data.id };
+                console.log('[saveToSupabase] Insert result - data:', data, 'error:', error);
+
+                if (error) {
+                    console.log('[saveToSupabase] Insert error:', error);
+                    throw error;
+                }
+
+                if (data) {
+                    console.log('[saveToSupabase] Setting currentReportId to:', data.id);
+                    setCurrentReportId(data.id);
+                    return { success: true, reportId: data.id };
+                } else {
+                    return { success: false, message: 'No data returned from insert' };
+                }
             }
         } catch (error) {
-            console.error('Error saving to Supabase:', error);
+            console.error('[saveToSupabase] Error:', error);
             return { success: false, message: error.message };
         }
     };

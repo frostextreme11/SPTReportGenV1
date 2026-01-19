@@ -66,6 +66,13 @@ export default function ReportGenerator() {
         }
     };
 
+    const goToStep = (stepId) => {
+        if (stepId >= 1 && stepId <= TOTAL_STEPS) {
+            setDirection(stepId > currentStep ? 1 : -1);
+            setCurrentStep(stepId);
+        }
+    };
+
     const handleReset = () => {
         if (confirm('Apakah Anda yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan.')) {
             resetForm();
@@ -105,7 +112,7 @@ export default function ReportGenerator() {
 
             <main className="max-w-4xl mx-auto pb-32">
                 {/* Progress Bar */}
-                <ProgressBar currentStep={currentStep} />
+                <ProgressBar currentStep={currentStep} onStepClick={goToStep} />
 
                 {/* Step Content */}
                 <div className="px-4 overflow-hidden">

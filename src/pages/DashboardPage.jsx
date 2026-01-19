@@ -7,7 +7,7 @@ import {
     ChevronRight, ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, MOCK_MODE, mockReports, withTimeout } from '../lib/supabaseClient';
 import PaymentModal from '../components/payment/PaymentModal';
 
 export default function DashboardPage() {
@@ -22,19 +22,46 @@ export default function DashboardPage() {
     }, [user]);
 
     const fetchReports = async () => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        // MOCK MODE - return immediately with mock data
+        if (MOCK_MODE) {
+            console.log('[Dashboard] MOCK_MODE enabled - skipping Supabase');
+            setReports(mockReports);
+            setLoading(false);
+            return;
+        }
 
         setLoading(true);
-        const { data, error } = await supabase
-            .from('tax_reports')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('updated_at', { ascending: false });
 
-        if (!error && data) {
-            setReports(data);
+        try {
+            const { data, error } = await withTimeout(
+                supabase
+                    .from('tax_reports')
+                    // Optimize: Select only needed fields, exclude heavy form_data
+                    .select('id, nama_wajib_pajak, npwp, tahun_pajak, is_download_unlocked, updated_at')
+                    .eq('user_id', user.id)
+                    .order('updated_at', { ascending: false }),
+                10000,
+                'Gagal memuat laporan'
+            );
+
+            if (!error && data) {
+                setReports(data);
+                console.log('[Dashboard] Loaded', data.length, 'reports');
+            } else {
+                console.log('[Dashboard] Error fetching reports:', error);
+                setReports([]);
+            }
+        } catch (err) {
+            console.error('[Dashboard] Fetch error:', err.message);
+            setReports([]);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleLogout = async () => {
@@ -49,11 +76,55 @@ export default function DashboardPage() {
         navigate('/generator');
     };
 
-    const handleOpenReport = (report) => {
-        // Save report data to localStorage and navigate
-        localStorage.setItem('siaplapor1771_formdata', JSON.stringify(report.form_data));
-        localStorage.setItem('siaplapor1771_currentReportId', report.id);
-        navigate('/generator');
+    const handleOpenReport = async (report) => {
+        // If report already has form_data (e.g. from creation), use it
+        if (report.form_data) {
+            localStorage.setItem('siaplapor1771_formdata', JSON.stringify(report.form_data));
+            localStorage.setItem('siaplapor1771_currentReportId', report.id);
+            navigate('/generator');
+            return;
+        }
+
+        // Otherwise fetch full data
+        setLoading(true);
+        try {
+            if (MOCK_MODE) {
+                const fullReport = mockReports.find(r => r.id === report.id);
+                if (fullReport) {
+                    localStorage.setItem('siaplapor1771_formdata', JSON.stringify(fullReport.form_data));
+                    localStorage.setItem('siaplapor1771_currentReportId', fullReport.id);
+                    navigate('/generator');
+                }
+                return;
+            }
+
+            const { data, error } = await withTimeout(
+                supabase
+                    .from('tax_reports')
+                    .select('form_data, id') // Fetch form_data explicitly
+                    .eq('id', report.id)
+                    .single(),
+                5000,
+                'Gagal memuat detail laporan'
+            );
+
+            if (error) throw error;
+
+            if (data && data.form_data) {
+                // Determine complexity of form_data to ensure deep copy or fresh state if needed
+                localStorage.setItem('siaplapor1771_formdata', JSON.stringify(data.form_data));
+                localStorage.setItem('siaplapor1771_currentReportId', data.id);
+                navigate('/generator');
+            } else {
+                alert('Data laporan kosong atau rusak.');
+            }
+
+        } catch (err) {
+            console.error('[Dashboard] Error opening report:', err);
+            alert('Gagal membuka laporan. Silakan coba lagi.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const formatDate = (dateString) => {
@@ -195,8 +266,8 @@ export default function DashboardPage() {
                                     <div className="flex items-center gap-4">
                                         {/* Lock/Unlock Status */}
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${report.is_download_unlocked
-                                                ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                                                : 'bg-slate-100 dark:bg-slate-700'
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                                            : 'bg-slate-100 dark:bg-slate-700'
                                             }`}>
                                             {report.is_download_unlocked ? (
                                                 <Unlock className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />

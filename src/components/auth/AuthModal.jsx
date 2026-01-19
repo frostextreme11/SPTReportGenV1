@@ -97,29 +97,35 @@ export default function AuthModal({ isOpen, onClose }) {
                         </p>
                     </div>
 
-                    {/* Tabs */}
-                    {activeTab !== 'reset' && (
-                        <div className="flex border-b border-slate-200 dark:border-slate-700">
-                            <button
-                                onClick={() => switchTab('login')}
-                                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'login'
+                    {/* Tabs - only show for login and signup */}
+                    <div className="flex border-b border-slate-200 dark:border-slate-700">
+                        {activeTab === 'reset' ? (
+                            <div className="flex-1 py-3 text-center text-sm font-medium text-emerald-600">
+                                Reset Password
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => switchTab('login')}
+                                    className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'login'
                                         ? 'text-emerald-600 border-b-2 border-emerald-500'
                                         : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                            >
-                                Masuk
-                            </button>
-                            <button
-                                onClick={() => switchTab('signup')}
-                                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'signup'
+                                        }`}
+                                >
+                                    Masuk
+                                </button>
+                                <button
+                                    onClick={() => switchTab('signup')}
+                                    className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'signup'
                                         ? 'text-emerald-600 border-b-2 border-emerald-500'
                                         : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                            >
-                                Daftar
-                            </button>
-                        </div>
-                    )}
+                                        }`}
+                                >
+                                    Daftar
+                                </button>
+                            </>
+                        )}
+                    </div>
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="p-6 space-y-4">

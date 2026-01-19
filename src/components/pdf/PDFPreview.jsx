@@ -1,18 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileText, RotateCcw, Eye, ChevronLeft, ChevronRight, Loader2, Sparkles, FileDown, Download } from 'lucide-react';
+import { X, FileText, RotateCcw, Eye, ChevronLeft, ChevronRight, Loader2, Sparkles, FileDown, Download, Lock, User } from 'lucide-react';
 import { useFormData } from '../../context/FormContext';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../ui/Button';
 import NeracaPage from './NeracaPage';
 import LabaRugiPage from './LabaRugiPage';
 import PeredaranPage from './PeredaranPage';
+import AuthModal from '../auth/AuthModal';
+import UnlockDownloadModal from '../payment/UnlockDownloadModal';
+import PaymentModal from '../payment/PaymentModal';
 
 export default function PDFPreview({ isOpen, onClose }) {
     const [currentPage, setCurrentPage] = useState(0);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatingDoc, setGeneratingDoc] = useState(null); // 'all', 'neraca', 'labarugi', 'peredaran'
+    const [generatingDoc, setGeneratingDoc] = useState(null);
     const [downloadSuccess, setDownloadSuccess] = useState(null);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+    const { user, profile, refreshProfile } = useAuth();
     const {
         formData,
         resetForm,
@@ -25,6 +33,10 @@ export default function PDFPreview({ isOpen, onClose }) {
         getTotalAktiva,
         getTotalKewajiban,
         getTotalModal,
+        currentReportId,
+        isDownloadUnlocked,
+        setDownloadUnlocked,
+        saveToSupabase
     } = useFormData();
 
     const calculations = {
@@ -44,6 +56,46 @@ export default function PDFPreview({ isOpen, onClose }) {
         { id: 'labarugi', title: 'Laba Rugi', component: <LabaRugiPage formData={formData} calculations={calculations} /> },
         { id: 'peredaran', title: 'Peredaran Usaha', component: <PeredaranPage formData={formData} calculations={calculations} /> },
     ];
+
+    // Check if user can download
+    const canDownload = () => {
+        return user && isDownloadUnlocked;
+    };
+
+    // Handle download gate
+    const handleDownloadGate = async (downloadFn) => {
+        console.log('[PDFPreview] handleDownloadGate called');
+        console.log('[PDFPreview] user:', user ? 'logged in' : 'not logged in');
+        console.log('[PDFPreview] isDownloadUnlocked:', isDownloadUnlocked);
+
+        // 1. Check if user is logged in
+        if (!user) {
+            console.log('[PDFPreview] Showing AuthModal');
+            setShowAuthModal(true);
+            return;
+        }
+
+        // 2. WORKAROUND: Skip save to Supabase (causes hanging)
+        // Just proceed to unlock check
+        console.log('[PDFPreview] User logged in, checking unlock status');
+
+        // 3. Check if download is unlocked
+        if (!isDownloadUnlocked) {
+            console.log('[PDFPreview] Showing UnlockModal');
+            setShowUnlockModal(true);
+            return;
+        }
+
+        // 4. Proceed with download
+        console.log('[PDFPreview] Proceeding with download');
+        downloadFn();
+    };
+
+    // After unlock, proceed with download
+    const handleUnlockSuccess = async () => {
+        await setDownloadUnlocked();
+        setShowUnlockModal(false);
+    };
 
     // Helper functions for PDF content generation
     const formatRupiah = (value) => {
@@ -259,7 +311,6 @@ export default function PDFPreview({ isOpen, onClose }) {
     const generateSinglePDF = async (docType, docTitle, htmlContent) => {
         const html2pdf = (await import('html2pdf.js')).default;
 
-        // Create wrapper to clip content from view
         const wrapper = document.createElement('div');
         wrapper.style.position = 'fixed';
         wrapper.style.left = '0';
@@ -270,7 +321,6 @@ export default function PDFPreview({ isOpen, onClose }) {
         wrapper.style.zIndex = '9999';
         wrapper.style.pointerEvents = 'none';
 
-        // Create the PDF container
         const pdfContainer = document.createElement('div');
         pdfContainer.style.position = 'absolute';
         pdfContainer.style.left = '0';
@@ -288,7 +338,6 @@ export default function PDFPreview({ isOpen, onClose }) {
         wrapper.appendChild(pdfContainer);
         document.body.appendChild(wrapper);
 
-        // Wait for DOM render
         await new Promise(resolve => setTimeout(resolve, 300));
 
         const containerHeight = pdfContainer.scrollHeight;
@@ -321,45 +370,36 @@ export default function PDFPreview({ isOpen, onClose }) {
         document.body.removeChild(wrapper);
     };
 
-    // Download individual document
-    const handleDownloadSingle = async (docType) => {
-        setIsGenerating(true);
-        setGeneratingDoc(docType);
-        setDownloadSuccess(null);
-
-        try {
-            let htmlContent, docTitle;
-            switch (docType) {
-                case 'neraca':
-                    htmlContent = getNeracaHTML();
-                    docTitle = 'Neraca';
-                    break;
-                case 'labarugi':
-                    htmlContent = getLabaRugiHTML();
-                    docTitle = 'Laba_Rugi';
-                    break;
-                case 'peredaran':
-                    htmlContent = getPeredaranHTML();
-                    docTitle = 'Peredaran_Usaha';
-                    break;
-                default:
-                    return;
-            }
-
-            await generateSinglePDF(docType, docTitle, htmlContent);
-            setDownloadSuccess(docType);
-            setTimeout(() => setDownloadSuccess(null), 3000);
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            alert('Terjadi kesalahan saat membuat PDF. Silakan coba lagi.');
-        } finally {
-            setIsGenerating(false);
-            setGeneratingDoc(null);
-        }
-    };
-
     // Download all documents as a single combined PDF
     const handleDownloadAll = async () => {
+        // 1. Check if user is logged in
+        if (!user) {
+            setShowAuthModal(true);
+            return;
+        }
+
+        // 2. Save report to Supabase if not already saved
+        if (!currentReportId) {
+            try {
+                const result = await saveToSupabase(user.id);
+                if (!result.success) {
+                    alert('Gagal menyimpan laporan. Silakan coba lagi.');
+                    return;
+                }
+            } catch (e) {
+                console.error('Error saving to Supabase:', e);
+                alert('Gagal menyimpan laporan. Silakan coba lagi.');
+                return;
+            }
+        }
+
+        // 3. Check if download is unlocked
+        if (!isDownloadUnlocked) {
+            setShowUnlockModal(true);
+            return;
+        }
+
+        // 4. Proceed with actual download
         setIsGenerating(true);
         setGeneratingDoc('all');
         setDownloadSuccess(null);
@@ -368,21 +408,18 @@ export default function PDFPreview({ isOpen, onClose }) {
             const { jsPDF } = await import('jspdf');
             const html2canvas = (await import('html2canvas')).default;
 
-            // Create a new PDF document
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
                 format: 'a4'
             });
 
-            const pageWidth = 210; // A4 width in mm
-            const pageHeight = 297; // A4 height in mm
+            const pageWidth = 210;
+            const pageHeight = 297;
             const margin = 15;
             const contentWidth = pageWidth - (margin * 2);
 
-            // Helper function to render HTML to canvas and add to PDF
             const addPageToPDF = async (htmlContent, isFirstPage = false) => {
-                // Create wrapper to clip content from view
                 const wrapper = document.createElement('div');
                 wrapper.style.position = 'fixed';
                 wrapper.style.left = '0';
@@ -393,13 +430,12 @@ export default function PDFPreview({ isOpen, onClose }) {
                 wrapper.style.zIndex = '9999';
                 wrapper.style.pointerEvents = 'none';
 
-                // Create the PDF container
                 const pdfContainer = document.createElement('div');
                 pdfContainer.style.position = 'absolute';
                 pdfContainer.style.left = '0';
                 pdfContainer.style.top = '0';
-                pdfContainer.style.width = '794px'; // A4 width at 96dpi
-                pdfContainer.style.minHeight = '1123px'; // A4 height at 96dpi
+                pdfContainer.style.width = '794px';
+                pdfContainer.style.minHeight = '1123px';
                 pdfContainer.style.padding = '40px';
                 pdfContainer.style.background = 'white';
                 pdfContainer.style.color = 'black';
@@ -412,10 +448,8 @@ export default function PDFPreview({ isOpen, onClose }) {
                 wrapper.appendChild(pdfContainer);
                 document.body.appendChild(wrapper);
 
-                // Wait for DOM render
                 await new Promise(resolve => setTimeout(resolve, 300));
 
-                // Render to canvas
                 const canvas = await html2canvas(pdfContainer, {
                     scale: 2,
                     useCORS: true,
@@ -424,19 +458,15 @@ export default function PDFPreview({ isOpen, onClose }) {
                     backgroundColor: '#ffffff'
                 });
 
-                // Calculate dimensions to fit content on one page
                 const imgWidth = contentWidth;
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-                // If not the first page, add a new page
                 if (!isFirstPage) {
                     pdf.addPage();
                 }
 
-                // Add the image to PDF
                 const imgData = canvas.toDataURL('image/jpeg', 0.98);
 
-                // If content is taller than page, scale it down to fit
                 let finalImgHeight = imgHeight;
                 let finalImgWidth = imgWidth;
                 const maxContentHeight = pageHeight - (margin * 2);
@@ -447,25 +477,17 @@ export default function PDFPreview({ isOpen, onClose }) {
                     finalImgWidth = imgWidth * scaleFactor;
                 }
 
-                // Center horizontally if scaled down
                 const xOffset = margin + (contentWidth - finalImgWidth) / 2;
 
                 pdf.addImage(imgData, 'JPEG', xOffset, margin, finalImgWidth, finalImgHeight);
 
-                // Cleanup
                 document.body.removeChild(wrapper);
             };
 
-            // Add Neraca page
             await addPageToPDF(getNeracaHTML(), true);
-
-            // Add Laba Rugi page
             await addPageToPDF(getLabaRugiHTML(), false);
-
-            // Add Peredaran Usaha page
             await addPageToPDF(getPeredaranHTML(), false);
 
-            // Save the combined PDF
             const filename = `Laporan_Keuangan_${formData.namaPerusahaan?.replace(/\s+/g, '_') || 'Perusahaan'}_${formData.tahunPajak}.pdf`;
             pdf.save(filename);
 
@@ -490,177 +512,238 @@ export default function PDFPreview({ isOpen, onClose }) {
     if (!isOpen) return null;
 
     return (
-        <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
-            >
+        <>
+            <AnimatePresence>
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-                    onClick={e => e.stopPropagation()}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    onClick={onClose}
                 >
-                    {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-                                <Eye className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                                    <Eye className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-lg text-slate-800 dark:text-white">Pratinjau Laporan</h2>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                                        {pages[currentPage].title} - Halaman {currentPage + 1} dari {pages.length}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="font-bold text-lg text-slate-800 dark:text-white">Pratinjau Laporan</h2>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    {pages[currentPage].title} - Halaman {currentPage + 1} dari {pages.length}
-                                </p>
+                            <button
+                                onClick={onClose}
+                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        {/* Download Access Status */}
+                        <div className={`mx-4 mt-4 rounded-xl p-3 border ${canDownload()
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                            }`}>
+                            <div className="flex items-center gap-2">
+                                {canDownload() ? (
+                                    <>
+                                        <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                            <strong>Download Aktif</strong> - Anda dapat mendownload laporan ini
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        {user ? (
+                                            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                        ) : (
+                                            <User className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                        )}
+                                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                                            {user
+                                                ? <><strong>Download Terkunci</strong> - Gunakan kuota untuk membuka akses</>
+                                                : <><strong>Login Diperlukan</strong> - Silakan login untuk download</>
+                                            }
+                                        </p>
+                                    </>
+                                )}
                             </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                        >
-                            <X className="w-5 h-5 text-slate-500" />
-                        </button>
-                    </div>
 
-                    {/* Download Buttons Section */}
-                    <div className="p-4 bg-gradient-to-r from-primary-50 to-emerald-50 dark:from-primary-900/20 dark:to-emerald-900/20 border-b border-slate-200 dark:border-slate-700">
-                        {/* Main Download All Button */}
-                        <motion.button
-                            onClick={handleDownloadAll}
-                            disabled={isGenerating}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`
+                        {/* Download Buttons Section */}
+                        <div className="p-4 bg-gradient-to-r from-primary-50 to-emerald-50 dark:from-primary-900/20 dark:to-emerald-900/20 border-b border-slate-200 dark:border-slate-700">
+                            <motion.button
+                                onClick={handleDownloadAll}
+                                disabled={isGenerating}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`
                                 w-full py-3 px-6 rounded-xl font-bold text-base
                                 flex items-center justify-center gap-3
                                 transition-all duration-300 relative overflow-hidden
                                 ${isGenerating && generatingDoc === 'all'
-                                    ? 'bg-slate-400 cursor-wait'
-                                    : downloadSuccess === 'all'
-                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg shadow-green-500/30'
-                                        : 'bg-gradient-to-r from-primary-500 via-primary-600 to-emerald-500 hover:from-primary-600 hover:via-primary-700 hover:to-emerald-600 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40'
-                                }
+                                        ? 'bg-slate-400 cursor-wait'
+                                        : downloadSuccess === 'all'
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg shadow-green-500/30'
+                                            : 'bg-gradient-to-r from-primary-500 via-primary-600 to-emerald-500 hover:from-primary-600 hover:via-primary-700 hover:to-emerald-600 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40'
+                                    }
                                 text-white
                             `}
-                        >
-                            {!isGenerating && downloadSuccess !== 'all' && (
-                                <motion.div
-                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                                    initial={{ x: '-100%' }}
-                                    animate={{ x: '100%' }}
-                                    transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-                                />
-                            )}
+                            >
+                                {!isGenerating && downloadSuccess !== 'all' && (
+                                    <motion.div
+                                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                                        initial={{ x: '-100%' }}
+                                        animate={{ x: '100%' }}
+                                        transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                                    />
+                                )}
 
-                            {isGenerating && generatingDoc === 'all' ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    <span>Membuat PDF Laporan Keuangan...</span>
-                                </>
-                            ) : downloadSuccess === 'all' ? (
-                                <>
-                                    <Sparkles className="w-5 h-5" />
-                                    <span>Laporan Berhasil Diunduh! ✓</span>
-                                </>
-                            ) : (
-                                <>
-                                    <FileDown className="w-5 h-5" />
-                                    <span>Download Laporan Keuangan (1 PDF - 3 Halaman)</span>
-                                </>
-                            )}
-                        </motion.button>
-                    </div>
+                                {isGenerating && generatingDoc === 'all' ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span>Membuat PDF Laporan Keuangan...</span>
+                                    </>
+                                ) : downloadSuccess === 'all' ? (
+                                    <>
+                                        <Sparkles className="w-5 h-5" />
+                                        <span>Laporan Berhasil Diunduh! ✓</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        {!canDownload() && <Lock className="w-4 h-4" />}
+                                        <FileDown className="w-5 h-5" />
+                                        <span>{canDownload() ? 'Download Laporan Keuangan (1 PDF - 3 Halaman)' : 'Buka Akses & Download PDF'}</span>
+                                    </>
+                                )}
+                            </motion.button>
+                        </div>
 
-                    {/* Page Tabs */}
-                    <div className="flex gap-1 p-2 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                        {pages.map((page, index) => (
-                            <button
-                                key={page.id}
-                                onClick={() => setCurrentPage(index)}
-                                className={`
+                        {/* Page Tabs */}
+                        <div className="flex gap-1 p-2 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                            {pages.map((page, index) => (
+                                <button
+                                    key={page.id}
+                                    onClick={() => setCurrentPage(index)}
+                                    className={`
                                     flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all
                                     ${currentPage === index
-                                        ? 'bg-white dark:bg-slate-800 text-primary-600 dark:text-primary-400 shadow-sm'
-                                        : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
-                                    }
+                                            ? 'bg-white dark:bg-slate-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                                            : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
+                                        }
                                 `}
-                            >
-                                <FileText className="w-4 h-4 inline mr-2" />
-                                {page.title}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* PDF Content Preview */}
-                    <div className="overflow-auto flex-1 bg-slate-100 dark:bg-slate-900 p-4">
-                        <motion.div
-                            key={currentPage}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            className="bg-white shadow-lg rounded-lg overflow-hidden mx-auto"
-                            style={{ maxWidth: '210mm' }}
-                        >
-                            {pages[currentPage].component}
-                        </motion.div>
-                    </div>
-
-                    {/* Page Navigation */}
-                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
-                        <button
-                            onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                            disabled={currentPage === 0}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                            Sebelumnya
-                        </button>
-
-                        <div className="flex gap-2">
-                            {pages.map((_, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => setCurrentPage(index)}
-                                    className={`w-3 h-3 rounded-full transition-all ${currentPage === index
-                                        ? 'bg-primary-500 scale-125'
-                                        : 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400'
-                                        }`}
-                                />
+                                >
+                                    <FileText className="w-4 h-4 inline mr-2" />
+                                    {page.title}
+                                </button>
                             ))}
                         </div>
 
-                        <button
-                            onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))}
-                            disabled={currentPage === pages.length - 1}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            Selanjutnya
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    </div>
+                        {/* PDF Content Preview */}
+                        <div className="overflow-auto flex-1 bg-slate-100 dark:bg-slate-900 p-4">
+                            <motion.div
+                                key={currentPage}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="bg-white shadow-lg rounded-lg overflow-hidden mx-auto"
+                                style={{ maxWidth: '210mm' }}
+                            >
+                                {pages[currentPage].component}
+                            </motion.div>
+                        </div>
 
-                    {/* Footer Actions */}
-                    <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
-                        <Button
-                            variant="outline"
-                            onClick={handleReset}
-                            className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
-                        >
-                            <RotateCcw className="w-4 h-4 mr-2" />
-                            Reset Data
-                        </Button>
+                        {/* Page Navigation */}
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                            <button
+                                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                                disabled={currentPage === 0}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                Sebelumnya
+                            </button>
 
-                        <Button variant="outline" onClick={onClose}>
-                            Tutup
-                        </Button>
-                    </div>
+                            <div className="flex gap-2">
+                                {pages.map((_, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setCurrentPage(index)}
+                                        className={`w-3 h-3 rounded-full transition-all ${currentPage === index
+                                            ? 'bg-primary-500 scale-125'
+                                            : 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400'
+                                            }`}
+                                    />
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))}
+                                disabled={currentPage === pages.length - 1}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Selanjutnya
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                            <Button
+                                variant="outline"
+                                onClick={handleReset}
+                                className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                            >
+                                <RotateCcw className="w-4 h-4 mr-2" />
+                                Reset Data
+                            </Button>
+
+                            <Button variant="outline" onClick={onClose}>
+                                Tutup
+                            </Button>
+                        </div>
+                    </motion.div>
                 </motion.div>
-            </motion.div>
-        </AnimatePresence>
+            </AnimatePresence>
+
+            {/* Auth Modal - Outside AnimatePresence for proper z-index */}
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+            />
+
+            {/* Unlock Download Modal */}
+            <UnlockDownloadModal
+                isOpen={showUnlockModal}
+                onClose={() => setShowUnlockModal(false)}
+                reportId={currentReportId}
+                onUnlocked={handleUnlockSuccess}
+                onBuyQuota={() => {
+                    setShowUnlockModal(false);
+                    setShowPaymentModal(true);
+                }}
+            />
+
+            {/* Payment Modal */}
+            <PaymentModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onSuccess={() => {
+                    refreshProfile();
+                    setShowPaymentModal(false);
+                }}
+            />
+        </>
     );
 }

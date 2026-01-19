@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Coins, Sparkles, Check, Loader2, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase, MOCK_MODE, mockProfile, withTimeout } from '../../lib/supabaseClient';
 
 const PACKAGES = [
     {
@@ -25,8 +25,8 @@ const PACKAGES = [
 ];
 
 export default function PaymentModal({ isOpen, onClose, onSuccess }) {
-    const { user } = useAuth();
-    const [selectedPackage, setSelectedPackage] = useState(PACKAGES[1]); // Default to popular
+    const { user, refreshProfile } = useAuth();
+    const [selectedPackage, setSelectedPackage] = useState(PACKAGES[1]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -43,25 +43,46 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
         setError('');
 
         try {
-            // Call Supabase Edge Function to create DOKU payment
-            const { data, error: fnError } = await supabase.functions.invoke('create-payment', {
+            // MOCK MODE - directly add quota without payment
+            if (MOCK_MODE) {
+                console.log('[PaymentModal] MOCK_MODE - simulating payment success');
+                mockProfile.quota_balance += selectedPackage.quotaAmount;
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (onSuccess) onSuccess();
+                alert(`✅ Berhasil! ${selectedPackage.quotaAmount} kuota telah ditambahkan.`);
+                onClose();
+                setLoading(false);
+                return;
+            }
+
+            // REAL MODE - Call Edge Function for DOKU Payment
+            console.log('[PaymentModal] Initiating DOKU payment...');
+
+            const { data, error: functionError } = await supabase.functions.invoke('create-payment', {
                 body: {
-                    package_type: selectedPackage.id,
-                    amount: selectedPackage.price,
-                    quota_amount: selectedPackage.quotaAmount
+                    packageId: selectedPackage.id,
+                    price: selectedPackage.price,
+                    name: selectedPackage.name,
+                    quotaAmount: selectedPackage.quotaAmount
                 }
             });
 
-            if (fnError) throw fnError;
+            if (functionError) throw functionError;
 
-            if (data?.payment_url) {
-                // Redirect to DOKU Checkout
-                window.location.href = data.payment_url;
+            if (data?.paymentUrl) {
+                // Redirect user to DOKU payment page
+                window.location.href = data.paymentUrl;
             } else {
-                throw new Error('Gagal mendapatkan URL pembayaran');
+                throw new Error('Gagal mendapatkan link pembayaran dari server.');
             }
+
+            // Note: execution stops here as page redirects. 
+            // Webhook will handle quota update upon successful payment.
+
         } catch (err) {
-            console.error('Payment error:', err);
+            console.error('[PaymentModal] Error:', err);
             setError(err.message || 'Terjadi kesalahan. Silakan coba lagi.');
         } finally {
             setLoading(false);
@@ -76,7 +97,7 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
                 onClick={onClose}
             >
                 <motion.div
@@ -124,8 +145,8 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => setSelectedPackage(pkg)}
                                     className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedPackage.id === pkg.id
-                                            ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                                            : 'border-slate-200 dark:border-slate-700 hover:border-amber-300'
+                                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                                        : 'border-slate-200 dark:border-slate-700 hover:border-amber-300'
                                         }`}
                                 >
                                     {pkg.popular && (
@@ -138,8 +159,8 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPackage.id === pkg.id
-                                                    ? 'border-amber-500 bg-amber-500'
-                                                    : 'border-slate-300 dark:border-slate-600'
+                                                ? 'border-amber-500 bg-amber-500'
+                                                : 'border-slate-300 dark:border-slate-600'
                                                 }`}>
                                                 {selectedPackage.id === pkg.id && (
                                                     <Check className="w-3 h-3 text-white" />
@@ -172,8 +193,7 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
                         {/* Payment Info */}
                         <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4">
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                <strong>Info:</strong> Pembayaran diproses melalui DOKU.
-                                Tersedia berbagai metode pembayaran: QRIS, Virtual Account, E-Wallet, dan Kartu Kredit.
+                                <strong>Info:</strong> Mode Demo - Kuota langsung ditambahkan tanpa pembayaran.
                             </p>
                         </div>
 
@@ -190,8 +210,8 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
                                 </>
                             ) : (
                                 <>
-                                    <ExternalLink className="w-5 h-5" />
-                                    <span>Bayar {formatRupiah(selectedPackage.price)}</span>
+                                    <Coins className="w-5 h-5" />
+                                    <span>Tambah {selectedPackage.quotaAmount} Kuota</span>
                                 </>
                             )}
                         </button>

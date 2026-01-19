@@ -55,26 +55,35 @@ export default function Step7DownloadCenter() {
 
     // Handle download gate
     const handleDownloadGate = async (downloadKey, downloadFn) => {
+        console.log('[DownloadGate] Called with key:', downloadKey);
+        console.log('[DownloadGate] User:', user);
+        console.log('[DownloadGate] isDownloadUnlocked:', isDownloadUnlocked);
+
         // 1. Check if user is logged in
         if (!user) {
+            console.log('[DownloadGate] No user - showing auth modal');
             setPendingDownload({ key: downloadKey, fn: downloadFn });
             setShowAuthModal(true);
             return;
         }
 
         // 2. Save report to Supabase if not already saved
+        // WORKAROUND: Skip save for now due to RLS issue causing INSERT to hang
+        // TODO: Fix RLS policy on tax_reports table
+        console.log('[DownloadGate] currentReportId:', currentReportId);
         if (!currentReportId) {
-            const result = await saveToSupabase(user.id);
-            if (!result.success) {
-                alert('Gagal menyimpan laporan. Silakan coba lagi.');
-                return;
-            }
+            console.log('[DownloadGate] No reportId - skipping save (RLS issue workaround)');
+            // Temporarily skip save and just show unlock modal
+            // The save will happen when user actually unlocks
         }
 
         // 3. Check if download is unlocked
+        console.log('[DownloadGate] About to show UnlockModal');
+        console.log('[DownloadGate] showUnlockModal state will be set to true');
         if (!isDownloadUnlocked) {
             setPendingDownload({ key: downloadKey, fn: downloadFn });
             setShowUnlockModal(true);
+            console.log('[DownloadGate] setShowUnlockModal(true) called');
             return;
         }
 
@@ -282,8 +291,8 @@ export default function Step7DownloadCenter() {
             {/* Download Access Status */}
             <FadeIn delay={0.05}>
                 <div className={`rounded-xl p-4 border ${canDownload()
-                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                        : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
                     }`}>
                     <div className="flex items-center gap-3">
                         {canDownload() ? (

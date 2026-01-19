@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Unlock, Coins, AlertCircle, Loader2, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase, MOCK_MODE, mockProfile, withTimeout } from '../../lib/supabaseClient';
+import { useFormData } from '../../context/FormContext';
 
-export default function UnlockDownloadModal({ isOpen, onClose, reportId, onUnlocked, onBuyQuota }) {
-    const { profile, refreshProfile } = useAuth();
+export default function UnlockDownloadModal({ isOpen, onClose, onUnlocked, onBuyQuota }) {
+    const { user, profile, refreshProfile } = useAuth();
+    const { currentReportId, setDownloadUnlocked } = useFormData();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -19,22 +21,74 @@ export default function UnlockDownloadModal({ isOpen, onClose, reportId, onUnloc
         setError('');
 
         try {
-            // Call Edge Function to use quota and unlock report
-            const { data, error: fnError } = await supabase.functions.invoke('use-quota', {
-                body: { report_id: reportId }
-            });
-
-            if (fnError) throw fnError;
-
-            if (data?.success) {
+            // MOCK MODE - directly unlock without database
+            if (MOCK_MODE) {
+                console.log('[UnlockDownloadModal] MOCK_MODE - simulating unlock');
+                mockProfile.quota_balance -= 1;
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await setDownloadUnlocked();
                 await refreshProfile();
                 onUnlocked();
                 onClose();
-            } else {
-                throw new Error(data?.message || 'Gagal membuka akses download');
+                setLoading(false);
+                return;
             }
+
+            // REAL MODE - Deduct quota and unlock report
+            console.log('[UnlockDownloadModal] Unlocking report:', currentReportId);
+
+            // 1. Deduct 1 quota from user profile
+            const newBalance = quotaBalance - 1;
+            const { error: updateProfileError } = await withTimeout(
+                supabase
+                    .from('profiles')
+                    .update({ quota_balance: newBalance })
+                    .eq('id', user.id),
+                8000,
+                'Gagal mengurangi kuota'
+            );
+
+            if (updateProfileError) throw updateProfileError;
+
+            // 2. Mark report as download unlocked (if we have a report ID)
+            if (currentReportId) {
+                const { error: updateReportError } = await withTimeout(
+                    supabase
+                        .from('tax_reports')
+                        .update({ is_download_unlocked: true })
+                        .eq('id', currentReportId),
+                    8000,
+                    'Gagal membuka akses download'
+                );
+
+                if (updateReportError) {
+                    // Rollback quota deduction
+                    await supabase
+                        .from('profiles')
+                        .update({ quota_balance: quotaBalance })
+                        .eq('id', user.id);
+                    throw updateReportError;
+                }
+
+                // 3. Log the transaction
+                await supabase.from('quota_transactions').insert({
+                    user_id: user.id,
+                    transaction_type: 'usage',
+                    amount: -1,
+                    report_id: currentReportId,
+                });
+            }
+
+            // 4. Update local state
+            await setDownloadUnlocked();
+            await refreshProfile();
+
+            console.log('[UnlockDownloadModal] Unlock successful');
+            onUnlocked();
+            onClose();
+
         } catch (err) {
-            console.error('Unlock error:', err);
+            console.error('[UnlockDownloadModal] Error:', err);
             setError(err.message || 'Terjadi kesalahan. Silakan coba lagi.');
         } finally {
             setLoading(false);
@@ -49,7 +103,7 @@ export default function UnlockDownloadModal({ isOpen, onClose, reportId, onUnloc
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
                 onClick={onClose}
             >
                 <motion.div
