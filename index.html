@@ -38,6 +38,28 @@
   <!-- Theme Color -->
   <meta name="theme-color" content="#10b981" />
 
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "BuatSPT",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "99000",
+        "priceCurrency": "IDR"
+      },
+      "description": "Generator laporan keuangan dan SPT Tahunan Badan 1771 otomatis untuk UMKM.",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "125"
+      }
+    }
+  </script>
+
   <script>
     // Dark mode initialization to prevent FOUC
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {

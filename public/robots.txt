@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /generator
+Disallow: /payment/
+
+Sitemap: https://buatspt.com/sitemap.xml
