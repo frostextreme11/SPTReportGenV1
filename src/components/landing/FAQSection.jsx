@@ -21,7 +21,7 @@ const faqs = [
     },
     {
         question: 'Apa bedanya dengan jasa konsultan pajak?',
-        answer: 'SPT Instan cocok untuk UMKM dengan struktur keuangan sederhana. Jika perusahaan Anda memiliki transaksi kompleks seperti investasi, saham, atau transaksi internasional, kami sarankan konsultasi dengan akuntan profesional.'
+        answer: 'BuatSPT cocok untuk UMKM dengan struktur keuangan sederhana. Jika perusahaan Anda memiliki transaksi kompleks seperti investasi, saham, atau transaksi internasional, kami sarankan konsultasi dengan akuntan profesional.'
     },
     {
         question: 'Bagaimana cara upload ke DJP Online?',

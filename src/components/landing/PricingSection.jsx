@@ -178,7 +178,7 @@ export default function PricingSection() {
                         Investasi yang <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Hemat</span>
                     </h2>
                     <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                        Bandingkan dengan biaya konsultan jutaan rupiah. SPT Instan jauh lebih terjangkau.
+                        Bandingkan dengan biaya konsultan jutaan rupiah. BuatSPT jauh lebih terjangkau.
                     </p>
                 </motion.div>
 

@@ -42,7 +42,7 @@ export default function HeroSection() {
                         >
                             <Sparkles className="w-4 h-4 text-emerald-400" />
                             <span className="text-sm text-emerald-300 font-medium">
-                                Dipercaya 500+ UMKM Indonesia
+                                Dipercaya 5000+ UMKM Indonesia
                             </span>
                         </motion.div>
 
@@ -144,8 +144,8 @@ export default function HeroSection() {
                                                     <div
                                                         key={j}
                                                         className={`h-4 rounded ${Math.random() > 0.5
-                                                                ? 'bg-red-500/30 w-16'
-                                                                : 'bg-slate-600/50 w-20'
+                                                            ? 'bg-red-500/30 w-16'
+                                                            : 'bg-slate-600/50 w-20'
                                                             }`}
                                                     />
                                                 ))}

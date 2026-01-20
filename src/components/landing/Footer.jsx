@@ -21,8 +21,8 @@ export default function Footer() {
                         </div>
                         <div>
                             <span className="font-bold text-lg">
-                                <span className="text-white">SPT</span>
-                                <span className="text-emerald-400">Instan</span>
+                                <span className="text-white">Buat</span>
+                                <span className="text-emerald-400">SPT</span>
                             </span>
                             <p className="text-xs text-slate-500">Generator Laporan SPT 1771</p>
                         </div>
@@ -46,7 +46,7 @@ export default function Footer() {
                             FAQ
                         </a>
                         <a
-                            href="mailto:support@sptinstan.com"
+                            href="mailto:support@buatspt.com"
                             className="text-slate-400 hover:text-white transition-colors"
                         >
                             Kontak
@@ -62,7 +62,7 @@ export default function Footer() {
                         className="text-sm text-slate-500"
                     >
                         <p className="flex items-center gap-1">
-                            © {currentYear} SPT Instan. Made with
+                            © {currentYear} BuatSPT. Made with
                             <Heart className="w-4 h-4 text-red-400 fill-red-400" />
                             in Indonesia
                         </p>
@@ -78,7 +78,7 @@ export default function Footer() {
                     className="mt-8 pt-8 border-t border-slate-800/50 text-center"
                 >
                     <p className="text-xs text-slate-600 max-w-2xl mx-auto">
-                        SPT Instan adalah alat bantu untuk menghasilkan laporan keuangan SPT 1771.
+                        BuatSPT adalah alat bantu untuk menghasilkan laporan keuangan SPT 1771.
                         Layanan ini tidak menggantikan konsultasi dengan konsultan pajak profesional.
                         Pengguna bertanggung jawab atas keakuratan data yang diinput.
                     </p>

@@ -105,7 +105,7 @@ serve(async (req) => {
                 email: user.email,
                 mobile: user.user_metadata?.phone || '081234567890', // Required by Mayar, fallback needed
                 customer_id: user.id, // Optional, for Mayar tracking
-                redirectURL: 'https://spt-canggih.vercel.app/dashboard', // Redirect back to app
+                redirectURL: 'https://buatspt.vercel.app/dashboard', // Redirect back to app
                 // type: 'ONETIME' // Default
             }
 

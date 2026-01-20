@@ -99,7 +99,7 @@ export default function ProblemSolution() {
                     className="text-center mb-16"
                 >
                     <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-4">
-                        Kenapa Pilih SPT Instan?
+                        Kenapa Pilih BuatSPT?
                     </span>
                     <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
                         Kami Paham <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">Masalah</span> Anda
@@ -156,7 +156,7 @@ export default function ProblemSolution() {
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Solusi Kami</span> Simpel & Akurat
                     </h2>
                     <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                        SPT Instan mengubah proses yang rumit jadi semudah isi formulir online.
+                        BuatSPT mengubah proses yang rumit jadi semudah isi formulir online.
                     </p>
                 </motion.div>
 

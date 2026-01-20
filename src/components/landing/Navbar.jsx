@@ -75,8 +75,8 @@ export default function Navbar() {
                                 <div className="absolute -inset-1 bg-emerald-500/20 rounded-xl blur-sm -z-10" />
                             </div>
                             <span className="font-bold text-xl tracking-tight">
-                                <span className="text-white">SPT</span>
-                                <span className="text-emerald-400">Instan</span>
+                                <span className="text-white">Buat</span>
+                                <span className="text-emerald-400">SPT</span>
                             </span>
                         </motion.div>
 

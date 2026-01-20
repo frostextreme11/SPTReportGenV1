@@ -25,13 +25,13 @@ export const withTimeout = (promise, timeoutMs = 10000, errorMessage = 'Request 
 // Mock data (only used when MOCK_MODE = true)
 export const mockUser = {
     id: 'mock-user-123',
-    email: 'demo@sptinstan.com',
+    email: 'demo@buatspt.com',
     email_confirmed_at: new Date().toISOString()
 };
 
 export const mockProfile = {
     id: 'mock-user-123',
-    email: 'demo@sptinstan.com',
+    email: 'demo@buatspt.com',
     full_name: 'Demo User',
     quota_balance: 5
 };
