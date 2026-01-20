@@ -8,6 +8,8 @@ export default function AuthModal({ isOpen, onClose }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [companyName, setCompanyName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -29,7 +31,10 @@ export default function AuthModal({ isOpen, onClose }) {
                 if (!fullName.trim()) {
                     throw new Error('Nama lengkap wajib diisi');
                 }
-                const { error } = await signUp(email, password, fullName);
+                if (!phone.trim()) {
+                    throw new Error('Nomor HP wajib diisi');
+                }
+                const { error } = await signUp(email, password, fullName, phone, companyName);
                 if (error) throw error;
                 setSuccess('Akun berhasil dibuat! Anda sekarang sudah login.');
                 setTimeout(() => onClose(), 1500);
@@ -49,6 +54,8 @@ export default function AuthModal({ isOpen, onClose }) {
         setEmail('');
         setPassword('');
         setFullName('');
+        setPhone('');
+        setCompanyName('');
         setError('');
         setSuccess('');
     };
@@ -155,19 +162,49 @@ export default function AuthModal({ isOpen, onClose }) {
 
                         {/* Full Name (Signup only) */}
                         {activeTab === 'signup' && (
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    Nama Lengkap
-                                </label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                        Nama Lengkap
+                                    </label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
+                                            placeholder="Nama lengkap Anda"
+                                            className="w-full pl-10 pr-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                        Nomor HP (WhatsApp)
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        placeholder="Contoh: 081234567890"
+                                        className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                                        required
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">Digunakan untuk konfirmasi pembayaran</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                        Nama Perusahaan (Opsional)
+                                    </label>
                                     <input
                                         type="text"
-                                        value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
-                                        placeholder="Nama lengkap Anda"
-                                        className="w-full pl-10 pr-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                                        required
+                                        value={companyName}
+                                        onChange={(e) => setCompanyName(e.target.value)}
+                                        placeholder="PT / CV ..."
+                                        className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                                     />
                                 </div>
                             </div>

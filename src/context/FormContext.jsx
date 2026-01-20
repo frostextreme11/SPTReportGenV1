@@ -330,6 +330,7 @@ export function FormProvider({ children }) {
         currentReportId,
         setCurrentReportId,
         isDownloadUnlocked,
+        setIsDownloadUnlocked, // Expose raw setter
         setDownloadUnlocked,
         saveToSupabase,
         loadFromSupabase,

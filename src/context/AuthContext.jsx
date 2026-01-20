@@ -189,11 +189,11 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const signUp = async (email, password, fullName) => {
+    const signUp = async (email, password, fullName, phone, companyName) => {
         if (MOCK_MODE) {
             setUser(mockUser);
             setSession({ user: mockUser });
-            setProfile({ ...mockProfile, full_name: fullName, email });
+            setProfile({ ...mockProfile, full_name: fullName, email, phone, company_name: companyName });
             return { data: { user: mockUser }, error: null };
         }
 
@@ -202,7 +202,12 @@ export function AuthProvider({ children }) {
             password,
             options: {
                 data: {
-                    full_name: fullName
+                    full_name: fullName,
+                    phone: phone,
+                    company_name: companyName,
+                    // Additional metadata for Mayar/Billing
+                    billing_name: fullName,
+                    billing_phone: phone
                 }
             }
         });

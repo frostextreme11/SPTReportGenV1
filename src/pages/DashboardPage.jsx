@@ -117,8 +117,8 @@ export default function DashboardPage() {
                     .select('form_data, id, is_download_unlocked') // Fetch is_download_unlocked too
                     .eq('id', report.id)
                     .single(),
-                5000,
-                'Gagal memuat detail laporan'
+                15000, // Increased timeout for large reports
+                'Gagal memuat detail laporan (Timeout)'
             );
 
             if (error) throw error;
@@ -129,12 +129,13 @@ export default function DashboardPage() {
                 setIsDownloadUnlocked(data.is_download_unlocked);
                 navigate('/generator');
             } else {
+                console.error('[Dashboard] Data invalid:', data);
                 alert('Data laporan kosong atau rusak.');
             }
 
         } catch (err) {
             console.error('[Dashboard] Error opening report:', err);
-            alert('Gagal membuka laporan. Silakan coba lagi.');
+            alert(`Gagal membuka laporan: ${err.message || 'Silakan coba lagi'}`);
         } finally {
             setLoading(false);
         }

@@ -75,9 +75,21 @@ export default function PDFPreview({ isOpen, onClose }) {
             return;
         }
 
-        // 2. WORKAROUND: Skip save to Supabase (causes hanging)
-        // Just proceed to unlock check
-        console.log('[PDFPreview] User logged in, checking unlock status');
+        // 2. Save report to Supabase if not already saved
+        if (!currentReportId) {
+            console.log('[PDFPreview] No reportId - saving report...');
+            try {
+                const result = await saveToSupabase(user.id);
+                if (!result.success) {
+                    alert('Gagal menyimpan laporan. Silakan coba lagi.');
+                    return;
+                }
+            } catch (e) {
+                console.error('Error saving report:', e);
+                alert('Gagal menyimpan laporan. Silakan coba lagi.');
+                return;
+            }
+        }
 
         // 3. Check if download is unlocked
         if (!isDownloadUnlocked) {

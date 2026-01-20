@@ -1,0 +1,2 @@
+[functions.mayar-webhook]
+verify_jwt = false

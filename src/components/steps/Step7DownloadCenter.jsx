@@ -72,9 +72,19 @@ export default function Step7DownloadCenter() {
         // TODO: Fix RLS policy on tax_reports table
         console.log('[DownloadGate] currentReportId:', currentReportId);
         if (!currentReportId) {
-            console.log('[DownloadGate] No reportId - skipping save (RLS issue workaround)');
-            // Temporarily skip save and just show unlock modal
-            // The save will happen when user actually unlocks
+            console.log('[DownloadGate] No reportId - saving report...');
+            try {
+                const result = await saveToSupabase(user.id);
+                if (!result.success) {
+                    alert('Gagal menyimpan laporan. Silakan coba lagi.');
+                    return;
+                }
+                // Continue with new ID (handled by context update)
+            } catch (e) {
+                console.error('Error saving report:', e);
+                alert('Gagal menyimpan laporan. Silakan coba lagi.');
+                return;
+            }
         }
 
         // 3. Check if download is unlocked
