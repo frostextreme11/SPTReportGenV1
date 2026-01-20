@@ -8,7 +8,8 @@ const corsHeaders = {
 }
 
 // Mayar Webhook Secret (From Dashboard)
-const WEBHOOK_SECRET = '2563400ca3cd7fba34c441ec3986733462fd71d2915c052e410259af3673599671ca5660e24afd8027309f1c8b6e4f238e359ce3a567ac04c1663eb94bce0e42';
+// Mayar Webhook Secret (From Dashboard)
+const WEBHOOK_SECRET = 'b3a5f974a4050a21e56fd9502dcb2b111bb02e1aa01ec7d1f34fd1b9e2a6f246d98337cb928a17de45a18c76665a3dcc1acd0f54af0e3a7e4c5a75fa7202c736';
 
 serve(async (req) => {
     // Handle CORS

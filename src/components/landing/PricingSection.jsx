@@ -37,14 +37,15 @@ const pricingPlans = [
         priceNote: 'untuk 5 perusahaan',
         description: 'Hemat 30% untuk banyak klien',
         popular: false,
+        savings: 'Lebih Hemat!', // NEW BADGE TRIGGER
         features: [
             { icon: Building2, text: '5 Laporan Perusahaan' },
             { icon: Users, text: 'Rp 70rb per perusahaan' },
             { icon: InfinityIcon, text: 'Revisi Unlimited' },
             { icon: Crown, text: 'White Label Ready' },
         ],
-        cta: 'Hubungi Kami',
-        ctaLink: '#contact',
+        cta: 'Mulai Sekarang',
+        ctaLink: '/generator',
     },
 ];
 
@@ -63,32 +64,47 @@ function PricingCard({ plan, index }) {
             <motion.div
                 whileHover={{ scale: 1.03, y: -8 }}
                 transition={{ duration: 0.3 }}
-                className={`relative h-full rounded-3xl overflow-hidden ${plan.popular
+                className={`relative h-full rounded-3xl overflow-hidden ${plan.popular || plan.savings
                     ? 'bg-gradient-to-br from-slate-800 to-slate-900'
                     : 'bg-slate-800/50'
                     }`}
             >
-                {/* Popular Badge & Glow */}
-                {plan.popular && (
+                {/* Visual Effects (Glow & Badges) */}
+                {(plan.popular || plan.savings) && (
                     <>
                         {/* Glow Border */}
-                        <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-emerald-500 opacity-30 blur-sm" />
+                        <div className={`absolute inset-0 rounded-3xl opacity-30 blur-sm bg-gradient-to-r ${plan.savings
+                            ? 'from-amber-500 via-orange-500 to-amber-500' // Gold/Orange for Savings
+                            : 'from-emerald-500 via-cyan-500 to-emerald-500' // Green/Cyan for Popular
+                            }`} />
                         <div
-                            className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-emerald-500 animate-pulse"
+                            className={`absolute -inset-0.5 rounded-3xl animate-pulse bg-gradient-to-r ${plan.savings
+                                ? 'from-amber-500 via-orange-500 to-amber-500'
+                                : 'from-emerald-500 via-cyan-500 to-emerald-500'
+                                }`}
                         />
 
                         {/* Badge */}
                         <div className="absolute -top-px left-1/2 -translate-x-1/2 z-20">
-                            <div className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-b-xl">
-                                <Star className="w-4 h-4 text-white fill-white" />
-                                <span className="text-sm font-bold text-white">Paling Populer</span>
+                            <div className={`flex items-center gap-1.5 px-4 py-1.5 rounded-b-xl ${plan.savings
+                                ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20'
+                                : 'bg-gradient-to-r from-emerald-500 to-cyan-500'
+                                }`}>
+                                {plan.savings ? (
+                                    <Crown className="w-4 h-4 text-white fill-white" />
+                                ) : (
+                                    <Star className="w-4 h-4 text-white fill-white" />
+                                )}
+                                <span className="text-sm font-bold text-white">
+                                    {plan.savings || 'Paling Populer'}
+                                </span>
                             </div>
                         </div>
                     </>
                 )}
 
                 {/* Card Content */}
-                <div className={`relative h-full p-8 rounded-3xl ${plan.popular
+                <div className={`relative h-full p-8 rounded-3xl ${plan.popular || plan.savings
                     ? 'bg-gradient-to-br from-slate-800 to-slate-900 border border-transparent'
                     : 'border border-slate-700/50'
                     }`}>
@@ -104,7 +120,9 @@ function PricingCard({ plan, index }) {
                             <span className="text-slate-400 text-lg">Rp</span>
                             <span className={`text-4xl lg:text-5xl font-extrabold ${plan.popular
                                 ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400'
-                                : 'text-white'
+                                : plan.savings
+                                    ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400'
+                                    : 'text-white'
                                 }`}>
                                 {plan.price}
                             </span>
@@ -124,9 +142,11 @@ function PricingCard({ plan, index }) {
                             >
                                 <div className={`w-8 h-8 rounded-lg ${plan.popular
                                     ? 'bg-emerald-500/10 border border-emerald-500/20'
-                                    : 'bg-slate-700/50'
+                                    : plan.savings
+                                        ? 'bg-amber-500/10 border border-amber-500/20'
+                                        : 'bg-slate-700/50'
                                     } flex items-center justify-center`}>
-                                    <feature.icon className={`w-4 h-4 ${plan.popular ? 'text-emerald-400' : 'text-slate-400'
+                                    <feature.icon className={`w-4 h-4 ${plan.popular ? 'text-emerald-400' : plan.savings ? 'text-amber-400' : 'text-slate-400'
                                         }`} />
                                 </div>
                                 <span className="text-slate-300">{feature.text}</span>
@@ -141,7 +161,9 @@ function PricingCard({ plan, index }) {
                             whileTap={{ scale: 0.98 }}
                             className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${plan.popular
                                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40'
-                                : 'bg-slate-700 text-white hover:bg-slate-600'
+                                : plan.savings
+                                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40'
+                                    : 'bg-slate-700 text-white hover:bg-slate-600'
                                 }`}
                         >
                             {plan.cta}
