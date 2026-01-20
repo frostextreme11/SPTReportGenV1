@@ -190,8 +190,41 @@ export function FormProvider({ children }) {
                 console.log('[saveToSupabase] Update success');
                 return { success: true, reportId: currentReportId };
             } else {
-                console.log('[saveToSupabase] Inserting new report for userId:', userId);
-                // Insert new report
+                // BUGFIX: Check if report with same NPWP and tahunPajak already exists
+                // to prevent duplicate reports on dashboard refresh
+                console.log('[saveToSupabase] Checking for existing report with NPWP:', npwp, 'and tahunPajak:', tahunPajak);
+
+                const { data: existingReport } = await supabase
+                    .from('tax_reports')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('npwp', npwp)
+                    .eq('tahun_pajak', tahunPajak)
+                    .maybeSingle();
+
+                if (existingReport) {
+                    // Update existing report instead of creating duplicate
+                    console.log('[saveToSupabase] Found existing report, updating:', existingReport.id);
+                    const { error } = await supabase
+                        .from('tax_reports')
+                        .update({
+                            nama_wajib_pajak: namaPerusahaan,
+                            form_data: formData,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', existingReport.id);
+
+                    if (error) {
+                        console.log('[saveToSupabase] Update existing error:', error);
+                        throw error;
+                    }
+
+                    setCurrentReportId(existingReport.id);
+                    return { success: true, reportId: existingReport.id };
+                }
+
+                console.log('[saveToSupabase] No existing report found, inserting new report for userId:', userId);
+                // Insert new report only if no duplicate exists
                 const { data, error } = await supabase
                     .from('tax_reports')
                     .insert({

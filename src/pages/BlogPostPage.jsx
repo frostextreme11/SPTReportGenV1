@@ -231,7 +231,7 @@ export default function BlogPostPage() {
                         Generate Laporan Laba Rugi & Neraca dalam hitungan detik.
                     </p>
                     <a
-                        href="https://buatspt.vercel.app/generate"
+                        href="https://buatspt.vercel.app/generator"
                         className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 transition-all"
                     >
                         Coba Gratis Sekarang
