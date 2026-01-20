@@ -159,7 +159,7 @@ export default function DashboardPage() {
                             <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center">
                                 <FileText className="w-5 h-5 text-white" />
                             </div>
-                            <span className="text-xl font-bold text-slate-800 dark:text-white">SPT Instan</span>
+                            <span className="text-xl font-bold text-slate-800 dark:text-white">BuatSPT</span>
                         </Link>
 
                         <div className="flex items-center gap-4">

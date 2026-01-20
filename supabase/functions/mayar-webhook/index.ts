@@ -153,20 +153,25 @@ serve(async (req) => {
 
             // We should ideally have saved `quota_amount` in `payments` table. 
             // If we didn't, let's derive it:
+            // 6. Add Quota to User
             let quotaToAdd = 0;
-            if (payment.package_type === 'SATUAN' || payment.amount < 100000) {
+
+            // Logic based on package_type (sent from PaymentModal -> create-payment -> payments table)
+            if (payment.package_type === '1_quota') {
                 quotaToAdd = 1;
-            } else if (payment.package_type === 'BORONGAN' || payment.amount >= 100000) {
-                quotaToAdd = 5; // Example logic, adjust as needed
+            } else if (payment.package_type === '5_quota') {
+                quotaToAdd = 5;
             } else {
-                quotaToAdd = 1; // Default fallback
+                // Fallback based on amount ONLY if package_type is unknown
+                // 1 Quota = 100,000 | 5 Quota = 350,000
+                if (payment.amount < 150000) {
+                    quotaToAdd = 1;
+                } else {
+                    quotaToAdd = 5;
+                }
             }
 
             // Retrieve current quota to be safe, or use atomic increment
-            // Supabase doesn't have native atomic increment via JS client easily without RPC.
-            // But we can read-then-write or use RPC.
-            // RPC `increment_quota` would be best. If not exists, read-write.
-
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('quota_balance')

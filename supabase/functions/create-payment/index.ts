@@ -105,8 +105,10 @@ serve(async (req) => {
                 email: user.email,
                 mobile: user.user_metadata?.phone || '081234567890', // Required by Mayar, fallback needed
                 customer_id: user.id, // Optional, for Mayar tracking
-                redirectURL: 'https://buatspt.vercel.app/dashboard', // Redirect back to app
-                // type: 'ONETIME' // Default
+                redirectURL: 'https://buatspt.vercel.app/payment/success', // Redirect to custom success page
+                redirect_url: 'https://buatspt.vercel.app/payment/success', // Fallback spelling
+                mobileRedirectURL: 'https://buatspt.vercel.app/payment/success', // Fallback for some flows
+                type: 'ONETIME' // Explicitly set type
             }
 
             console.log('Mayar Body:', JSON.stringify(mayarBody))
