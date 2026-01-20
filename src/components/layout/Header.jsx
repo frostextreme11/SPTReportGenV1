@@ -22,7 +22,7 @@ export default function Header() {
                     </motion.div>
                     <div>
                         <h1 className="text-lg font-bold text-slate-800 dark:text-white">
-                            SiapLapor 1771
+                            BuatSPT
                         </h1>
                         <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
                             Generator Laporan Keuangan SPT
