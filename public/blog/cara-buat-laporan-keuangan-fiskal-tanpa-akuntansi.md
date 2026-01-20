@@ -222,6 +222,3 @@ Coba buat Laporan Keuangan Fiskal pertama Anda hari ini. Gratis, cepat, dan tanp
 *Artikel ini ditulis oleh Tim BuatSPT untuk membantu UMKM Indonesia memenuhi kewajiban perpajakan dengan lebih mudah. Punya pertanyaan? Hubungi kami di halaman [Kontak](/contact).*
 
 ---
-
-**SEO Image Note:**  
-Jika ingin menambahkan gambar ilustrasi dalam artikel ini, gunakan nama file: `cara-buat-laporan-fiskal-umkm.jpg` dengan Alt Text: "Ilustrasi Membuat Laporan Keuangan Fiskal untuk UMKM".

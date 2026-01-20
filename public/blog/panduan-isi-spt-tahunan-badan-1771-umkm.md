@@ -180,6 +180,3 @@ Jangan tunggu sampai deadline mepet. Jangan sampai stres di menit-menit terakhir
 *Artikel ini ditulis oleh Tim BuatSPT untuk membantu UMKM Indonesia memenuhi kewajiban pajak dengan lebih mudah dan tanpa stress. Ada pertanyaan? Hubungi kami di halaman [Kontak](/contact).*
 
 ---
-
-**SEO Image Note:**  
-Jika ingin menambahkan gambar ilustrasi dalam artikel ini, gunakan nama file: `contoh-pengisian-form-1771-umkm.jpg` dengan Alt Text: "Contoh Pengisian Formulir 1771 SPT Tahunan Badan untuk UMKM".

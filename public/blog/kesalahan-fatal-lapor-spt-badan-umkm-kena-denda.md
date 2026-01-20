@@ -201,6 +201,3 @@ Jangan biarkan kesalahan administratif menghancurkan ketenangan Anda.
 *Artikel ini ditulis oleh Tim BuatSPT untuk membantu UMKM Indonesia memenuhi kewajiban perpajakan dengan benar dan tanpa stress. Ada pertanyaan? Hubungi kami di halaman [Kontak](/contact).*
 
 ---
-
-**SEO Image Note:**  
-Jika ingin menambahkan gambar ilustrasi dalam artikel ini, gunakan nama file: `kesalahan-lapor-spt-badan-umkm.jpg` dengan Alt Text: "5 Kesalahan Fatal Lapor SPT Badan yang Bikin UMKM Kena Denda".

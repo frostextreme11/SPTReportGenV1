@@ -177,6 +177,3 @@ Ribuan pemilik UMKM sudah terbantu. Sekarang giliranmu untuk lapor pajak dengan 
 *Artikel ini ditulis oleh Tim BuatSPT untuk membantu UMKM Indonesia memenuhi kewajiban perpajakan dengan lebih mudah dan tanpa stress. Punya pertanyaan? Hubungi kami di halaman [Kontak](/contact).*
 
 ---
-
-**SEO Image Note:**  
-Jika ingin menambahkan gambar ilustrasi dalam artikel ini, gunakan nama file: `dokumen-syarat-spt-badan-1771.jpg` dengan Alt Text: "Daftar Dokumen Syarat Lapor SPT Tahunan Badan Form 1771".

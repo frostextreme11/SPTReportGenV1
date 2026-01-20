@@ -45,6 +45,26 @@ const BLOG_POSTS = [
         image: '/images/blog/cover-kesalahan-spt-badan.jpeg',
         readTime: 8,
     },
+    {
+        slug: 'batas-waktu-pph-final-umkm-habis-tarif-umum',
+        title: 'Batas Waktu Tarif PPh Final UMKM 0,5% Habis: Panduan Beralih ke Tarif Umum',
+        description: 'Jatah tarif PPh Final 0,5% UMKM Anda habis? Jangan panik. Simak panduan lengkap beralih ke Tarif Umum dan cara mudah menyiapkan pembukuannya.',
+        date: '2026-01-20',
+        author: 'Tim BuatSPT',
+        tags: ['PPh Final UMKM', 'Tarif Umum', 'PP 23/2018', 'Pembukuan'],
+        image: '/images/blog/cover-tarif-umum-umkm.jpeg',
+        readTime: 9,
+    },
+    {
+        slug: 'download-template-excel-laporan-keuangan-pajak',
+        title: 'Download Template Excel Laporan Keuangan Pajak (Format Neraca & Laba Rugi)',
+        description: 'Cari template Excel laporan keuangan untuk pajak? Hati-hati rumus error! Cek alternatif download format Neraca dan Laba Rugi otomatis yang pasti balance.',
+        date: '2026-01-20',
+        author: 'Tim BuatSPT',
+        tags: ['Template Excel', 'Laporan Keuangan', 'Neraca Laba Rugi', 'Form 1771'],
+        image: '/images/blog/cover-template-excel-keuangan.jpeg',
+        readTime: 7,
+    },
 ];
 
 function BlogCard({ post, index }) {
