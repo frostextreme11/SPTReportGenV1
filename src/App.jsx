@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import DashboardPage from './pages/DashboardPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import BlogPostPage from './pages/BlogPostPage';
+import BlogListPage from './pages/BlogListPage';
 import ReportGenerator from './ReportGenerator';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
@@ -47,6 +48,7 @@ export default function App() {
                 />
                 <Route path="/payment/success" element={<PaymentCallback status="success" />} />
                 <Route path="/payment/cancel" element={<PaymentCallback status="cancel" />} />
+                <Route path="/blog" element={<BlogListPage />} />
                 <Route path="/blog/:slug" element={<BlogPostPage />} />
             </Routes>
         </Router>

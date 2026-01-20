@@ -82,6 +82,12 @@ export default function Navbar() {
 
                         {/* Desktop Navigation */}
                         <div className="hidden md:flex items-center gap-8">
+                            <Link
+                                to="/blog"
+                                className="text-slate-300 hover:text-white transition-colors font-medium"
+                            >
+                                Blog
+                            </Link>
                             <button
                                 onClick={() => scrollToSection('pricing')}
                                 className="text-slate-300 hover:text-white transition-colors font-medium"
@@ -144,6 +150,13 @@ export default function Navbar() {
                         className="fixed inset-x-0 top-16 z-40 md:hidden"
                     >
                         <div className="bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 px-4 py-6 space-y-4">
+                            <Link
+                                to="/blog"
+                                className="block text-slate-300 hover:text-white transition-colors font-medium py-2"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Blog
+                            </Link>
                             <button
                                 onClick={() => scrollToSection('pricing')}
                                 className="block w-full text-left text-slate-300 hover:text-white transition-colors font-medium py-2"

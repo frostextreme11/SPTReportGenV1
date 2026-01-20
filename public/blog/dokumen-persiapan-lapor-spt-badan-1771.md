@@ -9,8 +9,6 @@ keywords: "syarat lapor spt badan, dokumen lampiran 1771, berkas spt tahunan bad
 image: "/images/blog/cover-dokumen-spt-1771.jpeg"
 ---
 
-# Dokumen Apa Saja yang Wajib Disiapkan Sebelum Isi Form 1771? (Ceklist Lengkap)
-
 ## Mau Lapor Pajak Tapi Takut Ada Berkas yang Kurang?
 
 Pernah nggak, kamu sudah semangat buka laptop, login ke DJP Online, siap menuntaskan kewajiban lapor SPT Tahunan Badan...
