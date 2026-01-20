@@ -50,11 +50,12 @@ export function AuthProvider({ children }) {
                     fetchProfile(session.user.id);
 
                     // On sign in, sync localStorage data to Supabase in background
-                    if (event === 'SIGNED_IN') {
-                        syncLocalDataToSupabase(session.user.id).catch(err =>
-                            console.log('[AuthContext] Background sync warning:', err)
-                        );
-                    }
+                    // DISABLED: Causing duplicate reports on refresh due to race conditions/matching issues
+                    // if (event === 'SIGNED_IN') {
+                    //     syncLocalDataToSupabase(session.user.id).catch(err =>
+                    //         console.log('[AuthContext] Background sync warning:', err)
+                    //     );
+                    // }
                 } else {
                     setProfile(null);
                 }

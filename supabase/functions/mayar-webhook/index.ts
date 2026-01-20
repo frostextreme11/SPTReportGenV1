@@ -106,24 +106,35 @@ serve(async (req) => {
                 throw new Error("Payment record not found");
             }
 
-            if (payment.status === 'success') {
-                console.log("Payment already processed. Skipping.");
-                return new Response(JSON.stringify({ message: 'Already processed' }), { headers: corsHeaders, status: 200 });
-            }
-
-            const userId = payment.user_id;
-
-            // 5. Update Payment Status
-            const { error: updateError } = await supabase
+            // 5. Atomic Update Payment Status (Idempotency Check)
+            // We verify and update in one go to prevent race conditions
+            const { data: updatedPayment, error: updateError } = await supabase
                 .from('payments')
                 .update({
                     status: 'success',
                     updated_at: new Date().toISOString(),
-                    metadata: payload // Store full webhook payload for audit
+                    metadata: payload
                 })
-                .eq('id', payment.id);
+                .eq('id', payment.id)
+                .neq('status', 'success') // Only update if NOT already success
+                .select()
+                .single(); // Should return the row if updated, or error/null if not found/matched
+
+            // Check specifically for "PGRST116" which means no rows returned (condition failed)
+            if (updateError && updateError.code === 'PGRST116') {
+                console.log("Payment already processed (atomic check). Skipping.");
+                return new Response(JSON.stringify({ message: 'Already processed' }), { headers: corsHeaders, status: 200 });
+            }
+
+            if (!updatedPayment) {
+                console.log("Payment already processed or not found. Skipping.");
+                return new Response(JSON.stringify({ message: 'Already processed' }), { headers: corsHeaders, status: 200 });
+            }
 
             if (updateError) throw updateError;
+
+            // Proceed only if WE were the ones who updated it to success
+            const userId = payment.user_id;
 
             // 6. Add Quota to User
             // Calculate quota based on package_type or amount
