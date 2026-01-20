@@ -97,19 +97,26 @@ serve(async (req) => {
         if (provider === 'mayar') {
             console.log('--- START MAYAR PAYMENT ---')
             const mayarBody = {
-                amount: parseInt(String(amount)),
-                currency: 'IDR',
-                description: `Payment for ${package_type} - Invoice ${invoiceNumber}`,
-                external_id: invoiceNumber,
                 name: user.user_metadata?.full_name || 'Customer',
                 email: user.email,
-                mobile: user.user_metadata?.phone || '081234567890', // Required by Mayar, fallback needed
-                customer_id: user.id, // Optional, for Mayar tracking
-                redirectURL: 'https://buatspt.vercel.app/payment/success', // Redirect to custom success page
-                redirect_url: 'https://buatspt.vercel.app/payment/success', // Fallback spelling
-                mobileRedirectURL: 'https://buatspt.vercel.app/payment/success', // Fallback for some flows
-                type: 'ONETIME' // Explicitly set type
+                amount: parseInt(String(amount)),
+                mobile: user.user_metadata?.phone || '081234567890',
+                "redirectUrl": "https://buatspt.vercel.app/payment/success",
+                description: `Payment for ${package_type} - Invoice ${invoiceNumber}`,
             }
+            // const mayarBody = {
+            //     amount: parseInt(String(amount)),
+            //     currency: 'IDR',
+            //     description: `Payment for ${package_type} - Invoice ${invoiceNumber}`,
+            //     external_id: invoiceNumber,
+            //     name: user.user_metadata?.full_name || 'Customer',
+            //     email: user.email,
+            //     mobile: user.user_metadata?.phone || '081234567890', // Required by Mayar, fallback needed
+            //     customer_id: user.id, // Optional, for Mayar tracking // Redirect to custom success page
+            //     redirect_url: 'https://buatspt.vercel.app/payment/success', // Fallback spelling
+            //     mobile_redirect_url: 'https://buatspt.vercel.app/payment/success', // Fallback for some flows
+            //     type: 'ONETIME' // Explicitly set type
+            // }
 
             console.log('Mayar Body:', JSON.stringify(mayarBody))
 
