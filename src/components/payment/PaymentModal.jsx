@@ -25,12 +25,19 @@ const PACKAGES = [
 ];
 
 const PAYMENT_METHODS = [
+    // {
+    //     id: 'mayar',
+    //     name: 'QRIS / E-Wallet / VA',
+    //     description: 'Pembayaran instan via Mayar',
+    //     icon: Wallet,
+    //     recommended: true
+    // },
     {
-        id: 'mayar',
-        name: 'QRIS / E-Wallet / VA',
-        description: 'Pembayaran instan via Mayar',
-        icon: Wallet,
-        recommended: true
+        id: 'mayar_sandbox',
+        name: 'QRIS / E-Wallet / VA (Mayar V2)',
+        description: 'Pembayaran dengan redirect verification',
+        icon: CreditCard,
+        recommended: false
     }
 ];
 
@@ -86,7 +93,11 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
             // Direct fetch with Hybrid Auth to bypass Gateway 401
             // We authorize with ANON key (allowed by Gateway)
             // But verify user with x-user-token inside the function
-            const response = await fetch(`${supabaseUrl}/functions/v1/create-payment`, {
+            // Determine which Edge Function to call based on payment method
+            const edgeFunctionName = paymentMethod.id === 'mayar_sandbox' ? 'create-payment-v2' : 'create-payment';
+            console.log(`[PaymentModal] Calling Edge Function: ${edgeFunctionName}`);
+
+            const response = await fetch(`${supabaseUrl}/functions/v1/${edgeFunctionName}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     FileText, Plus, LogOut, Coins, Lock, Unlock,
@@ -16,9 +16,22 @@ export default function DashboardPage() {
     const { user, profile, signOut, refreshProfile } = useAuth();
     const { setFormData, setCurrentReportId, setIsDownloadUnlocked, resetForm } = useFormData(); // Use hook
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+    // Detect refresh parameter from payment success redirect
+    useEffect(() => {
+        const refreshType = searchParams.get('refresh');
+        if (refreshType === 'quota') {
+            console.log('[Dashboard] Detected refresh=quota, refreshing profile...');
+            refreshProfile();
+            // Clear the URL parameter after refresh
+            searchParams.delete('refresh');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, refreshProfile, setSearchParams]);
 
     useEffect(() => {
         fetchReports();
