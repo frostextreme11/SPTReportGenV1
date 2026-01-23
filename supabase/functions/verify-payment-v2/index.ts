@@ -13,9 +13,13 @@ const corsHeaders = {
 // Same verification secret used in create-payment-v2 (PRODUCTION webhook token)
 const VERIFICATION_SECRET = 'b3a5f974a4050a21e56fd9502dcb2b111bb02e1aa01ec7d1f34fd1b9e2a6f246d98337cb928a17de45a18c76665a3dcc1acd0f54af0e3a7e4c5a75fa7202c736'
 
-/**
- * Verify HMAC-SHA256 signature
- */
+// Package type to quota mapping
+const PACKAGE_QUOTA_MAP: Record<string, number> = {
+    '1_quota': 1,
+    '5_quota': 5,
+}
+
+// Helper to verify Mayar signature
 async function verifySignature(
     invoiceNumber: string,
     timestamp: number,
@@ -46,13 +50,6 @@ async function verifySignature(
     return signature === expectedBase64
 }
 
-// Package type to quota mapping
-const PACKAGE_QUOTA_MAP: Record<string, number> = {
-    '1_quota': 1,
-    '5_quota': 5,
-    // Add more package types as needed
-}
-
 serve(async (req) => {
     // Handle CORS
     if (req.method === 'OPTIONS') {
@@ -75,56 +72,26 @@ serve(async (req) => {
             throw new Error('Missing authorization header')
         }
 
-        // Initialize Supabase client with service role for admin operations
+        // Initialize Supabase client
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-        // Validate user token
+        // Validate user
         const { data: { user }, error: userError } = await supabase.auth.getUser(token)
 
         if (userError || !user) {
-            console.error('Auth error:', userError)
             throw new Error('Unauthorized')
         }
 
-        console.log('User authenticated:', user.id)
-
         // Parse request body
-        const { invoice_number, signature, timestamp } = await req.json()
+        const { invoice_number } = await req.json()
 
-        if (!invoice_number || !signature || !timestamp) {
-            throw new Error('Missing required fields: invoice_number, signature, timestamp')
+        if (!invoice_number) {
+            throw new Error('Missing invoice_number')
         }
 
-        console.log('Verifying payment:', { invoice_number, signature, timestamp })
-
-        // Verify signature
-        const isValidSignature = await verifySignature(
-            invoice_number,
-            parseInt(timestamp),
-            signature,
-            VERIFICATION_SECRET
-        )
-
-        if (!isValidSignature) {
-            console.error('Invalid signature')
-            throw new Error('Invalid payment signature')
-        }
-
-        console.log('Signature verified successfully')
-
-        // Check timestamp expiry (24 hours max)
-        const now = Math.floor(Date.now() / 1000)
-        const paymentTimestamp = parseInt(timestamp)
-        const maxAge = 24 * 60 * 60 // 24 hours in seconds
-
-        if (now - paymentTimestamp > maxAge) {
-            console.error('Payment verification expired')
-            throw new Error('Payment verification has expired')
-        }
-
-        // Find the payment record
+        // Find the payment record first
         const { data: payment, error: paymentError } = await supabase
             .from('payments')
             .select('*')
@@ -133,100 +100,129 @@ serve(async (req) => {
             .single()
 
         if (paymentError || !payment) {
-            console.error('Payment not found:', paymentError)
             throw new Error('Payment not found')
         }
 
-        console.log('Found payment:', payment)
+        console.log(`Payment found: ${payment.id}, Status: ${payment.status}, Provider: ${payment.provider}`)
 
-        // Check if already processed
-        if (payment.status === 'completed') {
-            console.log('Payment already completed, returning success')
+        // If ALREADY SUCCESS, return success
+        if (payment.status === 'success' || payment.status === 'completed') {
             return new Response(
                 JSON.stringify({
                     success: true,
                     message: 'Payment already processed',
-                    already_processed: true,
-                    version: 'verify-v2'
+                    quota_added: 0 // Already added
                 }),
-                {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                    status: 200,
-                }
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             )
         }
 
-        // Determine quota amount from package type
-        const quotaAmount = PACKAGE_QUOTA_MAP[payment.package_type] || 1
-        console.log('Quota to add:', quotaAmount)
+        // --- DOKU SPECIFIC CHECK ---
+        if (payment.provider === 'doku' && payment.status === 'pending') {
+            console.log("Checking DOKU Production Status API...")
 
-        // Get current user profile
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('quota_balance')
-            .eq('id', user.id)
-            .single()
+            // CORRECT CREDENTIALS (PRODUCTION)
+            const clientId = 'BRN-0246-1759407773449';
+            const secretKey = 'SK-DkDrAIUhTpb3oXphQJdp';
 
-        if (profileError) {
-            console.error('Profile error:', profileError)
-            throw new Error('Failed to get user profile')
-        }
+            // Generate Signature for "Check Status"
+            // Path: /orders/v1/status/{invoice_number}
 
-        const currentQuota = profile?.quota_balance || 0
-        const newQuota = currentQuota + quotaAmount
+            const requestId = crypto.randomUUID()
+            const requestTimestamp = new Date().toISOString().slice(0, 19) + "Z"
+            const requestPath = `/orders/v1/status/${invoice_number}`
 
-        console.log(`Updating quota: ${currentQuota} -> ${newQuota}`)
+            // Component Signature: ClientId + RequestId + Timestamp + RequestTarget
+            // (No Digest for GET/DELETE or bodies without content)
+            const componentSignature = `Client-Id:${clientId}\nRequest-Id:${requestId}\nRequest-Timestamp:${requestTimestamp}\nRequest-Target:${requestPath}`
 
-        // Update payment status to completed
-        const { error: updatePaymentError } = await supabase
-            .from('payments')
-            .update({ status: 'completed' })
-            .eq('id', payment.id)
+            const encoder = new TextEncoder()
+            const key = await crypto.subtle.importKey(
+                'raw', encoder.encode(secretKey), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+            )
+            const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(componentSignature))
+            const signature = "HMACSHA256=" + btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)))
 
-        if (updatePaymentError) {
-            console.error('Failed to update payment status:', updatePaymentError)
-            throw new Error('Failed to update payment status')
-        }
+            console.log("Calling DOKU API:", `https://api.doku.com${requestPath}`)
 
-        // Update user quota
-        const { error: updateQuotaError } = await supabase
-            .from('profiles')
-            .update({ quota_balance: newQuota })
-            .eq('id', user.id)
+            const dokuResponse = await fetch(`https://api.doku.com${requestPath}`, {
+                method: 'GET',
+                headers: {
+                    'Client-Id': clientId,
+                    'Request-Id': requestId,
+                    'Request-Timestamp': requestTimestamp,
+                    'Signature': signature
+                }
+            })
 
-        if (updateQuotaError) {
-            console.error('Failed to update quota:', updateQuotaError)
-            throw new Error('Failed to update quota')
-        }
-
-        console.log('Payment verified and quota updated successfully')
-        console.log('--- END VERIFY-PAYMENT-V2 ---')
-
-        return new Response(
-            JSON.stringify({
-                success: true,
-                message: 'Payment verified and quota added',
-                quota_added: quotaAmount,
-                new_quota_balance: newQuota,
-                version: 'verify-v2'
-            }),
-            {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200,
+            if (!dokuResponse.ok) {
+                const errText = await dokuResponse.text()
+                console.error("DOKU API Error:", dokuResponse.status, errText)
+                // Don't fail the whole request, just return pending state so client retries
+                throw new Error(`DOKU API connection failed: ${dokuResponse.status} ${errText}`)
             }
-        )
+
+            const dokuData = await dokuResponse.json()
+            console.log("DOKU Status Response:", dokuData)
+
+            // Check content
+            if (dokuData?.transaction?.status === 'SUCCESS') {
+                console.log("DOKU confirmed SUCCESS via API. Updating DB...")
+
+                const quotaAmount = payment.package_type === '5_quota' ? 5 : 1
+
+                // Update DB to success with Optimistic Concurrency Control
+                // Only update if status is still 'pending' to prevent double-quota addition from race conditions
+                const { error: updateError, count } = await supabase
+                    .from('payments')
+                    .update({ status: 'success', paid_at: new Date().toISOString() })
+                    .eq('id', payment.id)
+                    .eq('status', 'pending')
+                    .select('id', { count: 'exact' }) // Needed to get count
+
+                if (updateError) {
+                    throw new Error(`Database update failed: ${updateError.message}`)
+                }
+
+                // If count is 0, it means the payment was already updated by another process (webhook or parallel request)
+                if (count === 0) {
+                    console.log("Payment status was already updated by another process. Skipping quota increment.")
+                    return new Response(
+                        JSON.stringify({
+                            success: true,
+                            message: 'Payment verified (already processed by concurrency check)',
+                            quota_added: 0
+                        }),
+                        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+                    )
+                }
+
+                // Only increment quota if we successfully transitioned from pending -> success
+                console.log("Status updated to SUCCESS. Incrementing quota...")
+                await supabase.rpc('increment_quota', { user_id_input: user.id, amount_input: quotaAmount })
+
+                return new Response(
+                    JSON.stringify({
+                        success: true,
+                        message: 'Payment verified via DOKU API',
+                        quota_added: quotaAmount
+                    }),
+                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+                )
+            } else {
+                console.log("DOKU says payment is not success yet:", dokuData?.transaction?.status)
+                throw new Error('Payment still pending at DOKU')
+            }
+        }
+
+        // Falls through if not DOKU or other provider
+        throw new Error("Payment is pending and provider verification not implemented or failed.")
 
     } catch (error: any) {
         console.error('Error in verify-payment-v2:', error)
         return new Response(
-            JSON.stringify({
-                error: error.message,
-                version: 'verify-v2'
-            }),
-            {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
-            }
+            JSON.stringify({ error: error.message }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         )
     }
 })

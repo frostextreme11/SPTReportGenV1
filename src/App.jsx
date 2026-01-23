@@ -8,6 +8,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import BlogPostPage from './pages/BlogPostPage';
 import BlogListPage from './pages/BlogListPage';
 import ReportGenerator from './ReportGenerator';
+import DokuPaymentSuccess from './pages/DokuPaymentSuccess';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from './lib/supabaseClient';
@@ -50,6 +51,7 @@ export default function App() {
                 <Route path="/payment/success" element={<PaymentCallback status="success" />} />
                 <Route path="/payment/cancel" element={<PaymentCallback status="cancel" />} />
                 <Route path="/payment_success" element={<PaymentSuccessV2 />} />
+                <Route path="/doku-payment-success" element={<DokuPaymentSuccess />} />
                 <Route path="/blog" element={<BlogListPage />} />
                 <Route path="/blog/:slug" element={<BlogPostPage />} />
             </Routes>

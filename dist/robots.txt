@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /blog/
+Allow: /blog/*
+Disallow: /dashboard
+Disallow: /generator
+Disallow: /payment/
+
+# Allow crawling of blog images
+Allow: /images/blog/
+
+Sitemap: https://buatspt.vercel.app/sitemap.xml

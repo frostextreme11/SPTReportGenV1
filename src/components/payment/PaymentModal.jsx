@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Coins, Sparkles, Check, Loader2, ExternalLink, CreditCard, Wallet } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +37,13 @@ const PAYMENT_METHODS = [
         name: 'QRIS / E-Wallet / VA (Mayar V2)',
         description: 'Pembayaran dengan redirect verification',
         icon: CreditCard,
+        recommended: true
+    },
+    {
+        id: 'doku',
+        name: 'Bank Transfer / Indomaret / Alfamart (DOKU)',
+        description: 'Pembayaran via DOKU Gateway',
+        icon: Wallet,
         recommended: false
     }
 ];
@@ -55,6 +62,20 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
             minimumFractionDigits: 0
         }).format(num);
     };
+
+    // Load DOKU Sandbox Script
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = "https://sandbox.doku.com/jokul-checkout-js/v1/jokul-checkout-1.0.0.js";
+        script.async = true;
+        document.body.appendChild(script);
+
+        return () => {
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
+        };
+    }, []);
 
     const handlePayment = async () => {
         setLoading(true);
@@ -94,7 +115,8 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
             // We authorize with ANON key (allowed by Gateway)
             // But verify user with x-user-token inside the function
             // Determine which Edge Function to call based on payment method
-            const edgeFunctionName = paymentMethod.id === 'mayar_sandbox' ? 'create-payment-v2' : 'create-payment';
+            // Determine which Edge Function to call based on payment method
+            const edgeFunctionName = (paymentMethod.id === 'mayar_sandbox' || paymentMethod.id === 'doku') ? 'create-payment-v2' : 'create-payment';
             console.log(`[PaymentModal] Calling Edge Function: ${edgeFunctionName}`);
 
             const response = await fetch(`${supabaseUrl}/functions/v1/${edgeFunctionName}`, {
@@ -127,8 +149,21 @@ export default function PaymentModal({ isOpen, onClose, onSuccess }) {
             const data = await response.json();
 
             if (data?.payment_url || data?.paymentUrl) {
-                // Redirect user to payment page
-                window.location.href = data.payment_url || data.paymentUrl;
+                const url = data.payment_url || data.paymentUrl;
+
+                // If DOKU provider, use DOKU Checkout JS
+                if (paymentMethod.id === 'doku') {
+                    if (window.loadJokulCheckout) {
+                        window.loadJokulCheckout(url);
+                        setLoading(false); // Stop loading since popup handles it
+                        return;
+                    } else {
+                        console.warn('[PaymentModal] DOKU SDK not loaded, falling back to redirect');
+                    }
+                }
+
+                // Default redirect for Mayar or fallback
+                window.location.href = url;
             } else {
                 throw new Error('Gagal mendapatkan link pembayaran dari server.');
             }
